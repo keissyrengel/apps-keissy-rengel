@@ -359,10 +359,21 @@ function ResultStep({ form, updateForm, next, back }) {
           en los siguientes campos para que el título final se lea limpio.
         </div>
         <div className="help">Escribe este resultado empezando con un verbo en infinitivo, como: conseguir, crear, definir, construir, facturar, vender, lanzar, organizar, mejorar, ahorrar, automatizar o diseñar. La frase debe poder leerse después de “Cómo…”.</div>
-        <div className="example-grid">
-          <div className="example-box example-good"><strong>✅ Bien escrito</strong><span>conseguir 10 clientes desde Instagram</span><span>crear una oferta digital validada</span><span>definir una rutina de contenido semanal</span>
-          <div className="example-box example-bad"><strong>⚠️ Evita escribirlo así</strong><span>que tenga más clientes</span><span>quiero ayudar a vender más</span><span>mejorar su negocio</span></div>
-        </div>
+           <div className="example-grid">
+      <div className="example-box example-good">
+        <strong>✅ Bien escrito</strong>
+        <span>conseguir 10 clientes desde Instagram</span>
+        <span>crear una oferta digital validada</span>
+        <span>definir una rutina de contenido semanal</span>
+      </div>
+    
+      <div className="example-box example-bad">
+        <strong>⚠️ Evita escribirlo así</strong>
+        <span>que tenga más clientes</span>
+        <span>quiero ayudar a vender más</span>
+        <span>mejorar su negocio</span>
+      </div>
+    </div>
         {form.result && !startsWithActionVerb(form.result) && <div className="soft-warning">Tip: intenta empezar con un verbo de acción para que el título final suene mejor. Ejemplo: “conseguir…”, “crear…”, “definir…”, “vender…”.</div>}
       </div>
       <div className="form-group"><label className="label">¿En cuánto tiempo o con qué alcance?</label><input className="input" value={form.timeframe} onChange={(e) => updateForm("timeframe", e.target.value)} placeholder="Ej: en 30 días, en una semana, con una rutina de 20 minutos..." /></div>
