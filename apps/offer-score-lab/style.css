@@ -138,3 +138,6 @@ h1 { font-family: "Playfair Display", serif; font-size: clamp(42px, 6vw, 74px); 
   .result-score { width: 100%; }
   .score-row { grid-template-columns: 110px 1fr 44px; }
 }
+a.btn {
+  text-decoration: none;
+}
