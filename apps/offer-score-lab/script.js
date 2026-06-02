@@ -125,12 +125,41 @@ function capitalizeSentence(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+function removeRepeatedTitleParts(text) {
+  return cleanText(text)
+    .replace(/\s+sin\s+.+$/i, "")
+    .replace(/\s+en\s+\d+\s*(días|dias|semanas|meses|horas).+$/i, "")
+    .replace(/\s+en\s+(una semana|un mes|un día|un dia|30 días|30 dias).+$/i, "");
+}
+
+function normalizeTitlePart(text) {
+  return cleanText(text)
+    .replace(/^para\s+/i, "")
+    .replace(/^en\s+/i, "")
+    .replace(/^sin\s+/i, "")
+    .replace(/\.$/, "");
+}
+
 function buildOfferTitle(form) {
-  const result = normalizeResult(form.result);
-  const audience = normalizeAudience(form.audience);
-  const timeframe = normalizeTimeframe(form.timeframe);
-  const objection = normalizeObjection(form.objection);
-  const title = `Cómo ${result} para ${audience} en ${timeframe} sin ${objection}`;
+  const result = removeRepeatedTitleParts(normalizeResult(form.result));
+  const audience = normalizeTitlePart(normalizeAudience(form.audience));
+  const timeframe = normalizeTitlePart(normalizeTimeframe(form.timeframe));
+  const objection = normalizeTitlePart(normalizeObjection(form.objection));
+
+  let title = `Cómo ${result}`;
+
+  if (audience) {
+    title += ` para ${audience}`;
+  }
+
+  if (timeframe) {
+    title += ` en ${timeframe}`;
+  }
+
+  if (objection) {
+    title += ` sin ${objection}`;
+  }
+
   return capitalizeSentence(removeDuplicatePrepositions(title));
 }
 
@@ -317,17 +346,27 @@ function ResultStep({ form, updateForm, next, back }) {
       <p className="panel-copy">Una oferta fuerte no vende información. Vende una transformación clara. Para que el título final suene natural, escribe el resultado como una acción: conseguir, crear, definir, lanzar, vender, facturar, organizar o construir.</p>
       <div className="mini-note"><span>💡</span><div><strong>Fórmula:</strong> Cómo + [verbo en infinitivo + resultado concreto] para [perfil exacto] en [tiempo] sin [objeción principal].</div></div>
       <div className="form-group">
-        <label className="label">¿Qué resultado concreto quiere lograr?</label>
-        <input className="input" value={form.result} onChange={(e) => updateForm("result", e.target.value)} placeholder="Ej: conseguir 3 clientes nuevos desde Instagram" />
+      <label className="label"> ¿Qué resultado concreto quiere lograr?</label>
+        <input
+          className="input"
+          value={form.result}
+          onChange={(e) => updateForm("result", e.target.value)}
+          placeholder="Ej: conseguir 10 clientes desde Instagram"
+        />
+        <div className="help">
+          Escribe solo el resultado, empezando con un verbo de acción.
+          No incluyas aquí el público, el tiempo ni la objeción. Eso lo vamos a sumar
+          en los siguientes campos para que el título final se lea limpio.
+        </div>
         <div className="help">Escribe este resultado empezando con un verbo en infinitivo, como: conseguir, crear, definir, construir, facturar, vender, lanzar, organizar, mejorar, ahorrar, automatizar o diseñar. La frase debe poder leerse después de “Cómo…”.</div>
         <div className="example-grid">
-          <div className="example-box example-good"><strong>✅ Bien escrito</strong><span>conseguir 3 clientes nuevos desde Instagram</span><span>crear tu primera oferta digital validada</span><span>definir una rutina de contenido semanal</span></div>
+          <div className="example-box example-good"><strong>✅ Bien escrito</strong><span>conseguir 10 clientes desde Instagram</span><span>crear una oferta digital validada</span><span>definir una rutina de contenido semanal</span>
           <div className="example-box example-bad"><strong>⚠️ Evita escribirlo así</strong><span>que tenga más clientes</span><span>quiero ayudar a vender más</span><span>mejorar su negocio</span></div>
         </div>
         {form.result && !startsWithActionVerb(form.result) && <div className="soft-warning">Tip: intenta empezar con un verbo de acción para que el título final suene mejor. Ejemplo: “conseguir…”, “crear…”, “definir…”, “vender…”.</div>}
       </div>
       <div className="form-group"><label className="label">¿En cuánto tiempo o con qué alcance?</label><input className="input" value={form.timeframe} onChange={(e) => updateForm("timeframe", e.target.value)} placeholder="Ej: en 30 días, en una semana, con una rutina de 20 minutos..." /></div>
-      <div className="form-group"><label className="label">¿Qué objeción principal quiere evitar?</label><input className="input" value={form.objection} onChange={(e) => updateForm("objection", e.target.value)} placeholder="Ej: sin pagar anuncios, sin grabar todos los días, sin sentirte intensa vendiendo..." /></div>
+      <div className="form-group"><label className="label">¿Qué objeción principal quiere evitar?</label><input className="input" value={form.objection} onChange={(e) => updateForm("objection", e.target.value)} placeholder="Ej: pagar anuncios, grabar todos los días, sentirte intensa vendiendo..." /></div>
       <div className="nav-actions"><button className="btn btn-ghost" onClick={back}>← Atrás</button><button className="btn btn-primary" onClick={next}>Continuar →</button></div>
     </>
   );
