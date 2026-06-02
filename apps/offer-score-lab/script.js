@@ -445,7 +445,7 @@ function ResultsStep({ form, offerData, mainOfferTitle, selectedFormat, back, re
     className="btn btn-secondary"
     onClick={() =>
       window.open(
-        "https://cursos.keissyrengel.com/checkout-idea-a-ingresos",
+        "https://cursos.keissyrengel.com/checkout-curso-express-24h",
         "_blank"
       )
     }
