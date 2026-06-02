@@ -358,7 +358,6 @@ function ResultStep({ form, updateForm, next, back }) {
           No incluyas aquí el público, el tiempo ni la objeción. Eso lo vamos a sumar
           en los siguientes campos para que el título final se lea limpio.
         </div>
-        <div className="help">Escribe este resultado empezando con un verbo en infinitivo, como: conseguir, crear, definir, construir, facturar, vender, lanzar, organizar, mejorar, ahorrar, automatizar o diseñar. La frase debe poder leerse después de “Cómo…”.</div>
            <div className="example-grid">
       <div className="example-box example-good">
         <strong>✅ Bien escrito</strong>
@@ -429,25 +428,32 @@ function ResultsStep({ form, offerData, mainOfferTitle, selectedFormat, back, re
               <div className="feedback-box feedback-good"><h4>✅ Por qué funciona</h4><ul><li>Parte de un tema que la alumna sí quiere convertir en producto.</li><li>Incluye una promesa más específica que una idea genérica.</li><li>El formato elegido suma valor percibido a la oferta.</li><li>Se puede convertir en una estructura de producto real.</li></ul></div>
               <div className="feedback-box feedback-bad"><h4>⚠️ Mejora sugerida</h4><ul><li>Haz el resultado todavía más medible si es posible.</li><li>Agrega un mecanismo único para diferenciar la promesa.</li><li>Revisa si la objeción principal es la más fuerte para esa audiencia.</li></ul></div>
             </div>
-            <div className="nav-actions">
-  <a
+<div className="nav-actions">
+  <button
     className="btn btn-primary"
-    href="https://cursos.keissyrengel.com/lanzamiento-income-atlas"
-    target="_blank"
-    rel="noopener noreferrer"
+    onClick={() =>
+      window.open(
+        "https://cursos.keissyrengel.com/lanzamiento-income-atlas",
+        "_blank"
+      )
+    }
   >
     Mejorar esta oferta
-  </a>
+  </button>
 
-  <a
+  <button
     className="btn btn-secondary"
-    href="https://cursos.keissyrengel.com/checkout-idea-a-ingresos"
-    target="_blank"
-    rel="noopener noreferrer"
+    onClick={() =>
+      window.open(
+        "https://cursos.keissyrengel.com/checkout-idea-a-ingresos",
+        "_blank"
+      )
+    }
   >
     Crear estructura del producto
-  </a>
+  </button>
 </div>
+          </div>
         ))}
       </div>
       <div className="reset-zone"><div><h3>¿Quieres seguir explorando?</h3><p>Puedes probar otro ángulo con este mismo tema o borrar todo para crear una oferta completamente nueva.</p></div><div className="hero-actions"><button className="btn btn-secondary" onClick={tryAnotherAngle}>Probar otro ángulo</button><button className="btn btn-ghost" onClick={resetAll}>Crear una nueva oferta</button></div></div>
