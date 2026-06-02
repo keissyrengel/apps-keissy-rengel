@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Montserrat', sans-serif; background: #fff7f8; min-height: 100vh; }
+
+  .header {
+    background: #fff;
+    border-bottom: 2px solid #FF174F;
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo-area { display: flex; align-items: center; gap: 12px; }
+  .logo-svg { max-width: 180px; height: auto; }
+  .header-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 13px;
+    color: #FF174F;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .badge {
+    background: #FF174F;
+    color: #fff;
+    font-size: 11px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  .main {
+    max-width: 1000px;
+    margin: 32px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+  }
+  .page-subtitle {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 28px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #f0d0d8;
+    padding: 28px;
+    box-shadow: 0 2px 16px rgba(255,23,79,0.06);
+  }
+
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    color: #FF174F;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title svg { flex-shrink: 0; }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+  label:first-of-type { margin-top: 0; }
+
+  .field-hint {
+    font-size: 11px;
+    color: #aaa;
+    margin-top: 4px;
+  }
+
+  input[type="text"], textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #f0d0d8;
+    border-radius: 10px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    color: #1a1a1a;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+    resize: none;
+  }
+  input[type="text"]:focus, textarea:focus {
+    border-color: #FF174F;
+  }
+  textarea { min-height: 90px; line-height: 1.5; }
+
+  .btn-generate {
+    width: 100%;
+    margin-top: 22px;
+    background: #FF174F;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 13px 20px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    letter-spacing: 0.3px;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-generate:hover { background: #d90040; }
+  .btn-generate:active { transform: scale(0.98); }
+
+  .result-box {
+    margin-top: 18px;
+    background: #fff7f8;
+    border: 1.5px solid #FF174F;
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: none;
+  }
+  .result-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #FF174F;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 6px;
+  }
+  .result-link {
+    font-size: 12px;
+    color: #333;
+    word-break: break-all;
+    line-height: 1.5;
+  }
+  .btn-copy {
+    margin-top: 12px;
+    width: 100%;
+    background: transparent;
+    border: 1.5px solid #FF174F;
+    color: #FF174F;
+    border-radius: 10px;
+    padding: 9px 16px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background 0.2s, color 0.2s;
+  }
+  .btn-copy:hover { background: #FF174F; color: #fff; }
+  .copy-success {
+    text-align: center;
+    font-size: 12px;
+    color: #25D366;
+    font-weight: 600;
+    margin-top: 8px;
+    display: none;
+  }
+
+  /* iPhone mockup */
+  .phone-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 10px;
+  }
+  .phone {
+    width: 230px;
+    background: #1a1a1a;
+    border-radius: 40px;
+    padding: 12px 10px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    position: relative;
+  }
+  .phone-notch {
+    width: 70px;
+    height: 22px;
+    background: #1a1a1a;
+    border-radius: 0 0 14px 14px;
+    margin: 0 auto 8px;
+    position: relative;
+    z-index: 2;
+  }
+  .phone-screen {
+    background: #e5ddd5;
+    border-radius: 28px;
+    overflow: hidden;
+    min-height: 420px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* WA header */
+  .wa-header {
+    background: #075e54;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .wa-back { color: #fff; font-size: 18px; }
+  .wa-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: #25D366;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: #fff;
+  }
+  .wa-contact { flex: 1; }
+  .wa-name { color: #fff; font-size: 12px; font-weight: 600; font-family: 'Montserrat',sans-serif; }
+  .wa-status { color: rgba(255,255,255,0.7); font-size: 10px; font-family: 'Montserrat',sans-serif; }
+  .wa-icons { display: flex; gap: 12px; }
+  .wa-icons span { color: #fff; font-size: 16px; }
+
+  /* WA body */
+  .wa-body {
+    flex: 1;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 8px;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3C/svg%3E");
+  }
+
+  .bubble-wrapper {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .bubble {
+    background: #dcf8c6;
+    border-radius: 12px 12px 2px 12px;
+    padding: 8px 10px 18px;
+    max-width: 85%;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  }
+  .bubble-text {
+    font-size: 11px;
+    color: #1a1a1a;
+    font-family: 'Montserrat', sans-serif;
+    line-height: 1.5;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+  .bubble-time {
+    position: absolute;
+    bottom: 4px;
+    right: 8px;
+    font-size: 9px;
+    color: #777;
+    font-family: 'Montserrat', sans-serif;
+  }
+  .bubble-checks {
+    position: absolute;
+    bottom: 4px;
+    right: -2px;
+    color: #53bdeb;
+    font-size: 11px;
+  }
+
+  /* WA input bar */
+  .wa-input-bar {
+    background: #f0f0f0;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .wa-input-field {
+    flex: 1;
+    background: #fff;
+    border-radius: 20px;
+    padding: 5px 10px;
+    font-size: 10px;
+    color: #aaa;
+    font-family: 'Montserrat', sans-serif;
+  }
+  .wa-send {
+    width: 28px; height: 28px;
+    background: #075e54;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 13px;
+  }
+
+  .preview-label {
+    text-align: center;
+    font-size: 11px;
+    color: #aaa;
+    font-family: 'Montserrat', sans-serif;
+    margin-top: 12px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .footer {
+    text-align: center;
+    padding: 18px 0 4px;
+    font-size: 12px;
+    color: #999;
+    font-family: 'Montserrat', sans-serif;
+    border-top: 1px solid #f0d0d8;
+    margin-top: 36px;
+  }
+  .footer a { color: #FF174F; text-decoration: none; font-weight: 600; }
+  .footer a:hover { text-decoration: underline; }
+
+  .empty-state {
+    text-align: center;
+    padding: 30px 10px;
+    color: #aaa;
+    font-size: 11px;
+    font-family: 'Montserrat', sans-serif;
+    line-height: 1.7;
+  }
+  .empty-state .wa-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo-area">
+    <a href="https://www.keissyrengel.com" target="_blank" style="display:block; text-decoration:none;">
+      <svg width="200" height="56" viewBox="0 0 200 56" xmlns="http://www.w3.org/2000/svg">
+        <text x="0" y="38" font-family="'Playfair Display', Georgia, serif" font-size="40" font-weight="700" fill="#FF174F" letter-spacing="-1">Keissy</text>
+        <text x="2" y="54" font-family="'Montserrat', Arial, sans-serif" font-size="13" font-weight="500" fill="#FF174F" letter-spacing="6">RENGEL</text>
+      </svg>
+    </a>
+  </div>
+  <div class="badge">Generador WhatsApp</div>
+</div>
+
+<div class="main">
+  <h1 class="page-title">Genera tu enlace de WhatsApp</h1>
+  <p class="page-subtitle">Crea un botón que lleve a tus leads directo a tu WhatsApp con un mensaje listo para enviar.</p>
+
+  <div class="grid">
+    <!-- Columna izquierda: formulario -->
+    <div class="card">
+      <div class="card-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF174F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.1 19.79 19.79 0 0 1 1.61 4.54 2 2 0 0 1 3.6 2.36h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.16 6.16l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        Tus datos
+      </div>
+
+      <label>Número de WhatsApp</label>
+      <input type="text" id="phone" placeholder="Ej: 14155552671" oninput="updatePreview()" />
+      <p class="field-hint">Incluye código de país · sin +, espacios ni guiones · Ej: 14155552671</p>
+
+      <label>Mensaje predeterminado</label>
+      <textarea id="message" oninput="updatePreview()" placeholder="Ej: Hola Keissy, acabo de completar mi aplicación para la Discovery Call. Quedo atenta a tu respuesta 😊"></textarea>
+      <p class="field-hint">El lead podrá editarlo antes de enviarlo.</p>
+
+      <button class="btn-generate" onclick="generateLink()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Generar enlace de WhatsApp
+      </button>
+
+      <div class="result-box" id="result-box">
+        <div class="result-label">Tu enlace generado</div>
+        <div class="result-link" id="result-link"></div>
+        <button class="btn-copy" onclick="copyLink()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copiar enlace
+        </button>
+        <div class="copy-success" id="copy-success">✓ ¡Enlace copiado! Pégalo en tu botón.</div>
+      </div>
+    </div>
+
+    <!-- Columna derecha: mockup iPhone -->
+    <div>
+      <div class="phone-wrapper">
+        <div>
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="wa-header">
+                <span class="wa-back">‹</span>
+                <div class="wa-avatar">T</div>
+                <div class="wa-contact">
+                  <div class="wa-name" id="wa-name">Tu negocio</div>
+                  <div class="wa-status">en línea</div>
+                </div>
+                <div class="wa-icons">
+                  <span>📹</span>
+                  <span>📞</span>
+                </div>
+              </div>
+
+              <div class="wa-body" id="wa-body">
+                <div class="empty-state" id="empty-state">
+                  <span class="wa-icon">💬</span>
+                  Escribe tu mensaje<br>para ver la preview
+                </div>
+                <div class="bubble-wrapper" id="bubble-wrapper" style="display:none;">
+                  <div class="bubble">
+                    <div class="bubble-text" id="bubble-text"></div>
+                    <span class="bubble-time">ahora</span>
+                    <span class="bubble-checks"> ✓✓</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="wa-input-bar">
+                <div class="wa-input-field">Escribe un mensaje</div>
+                <div class="wa-send">➤</div>
+              </div>
+            </div>
+          </div>
+          <div class="preview-label">Preview en tiempo real</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Esta app fue creada para ti por <a href="https://www.keissyrengel.com" target="_blank">Keissy Rengel</a> con Claude AI
+    <br><span style="font-size:11px; color:#ccc;">Estrategia que convierte · Sistemas que escalan · Resultados que transforman</span>
+  </div>
+</div>
+
+<script>
+  function updatePreview() {
+    const msg = document.getElementById('message').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const bubbleWrapper = document.getElementById('bubble-wrapper');
+    const emptyState = document.getElementById('empty-state');
+    const bubbleText = document.getElementById('bubble-text');
+    const waName = document.getElementById('wa-name');
+
+    if (phone) {
+      waName.textContent = '+' + phone;
+    } else {
+      waName.textContent = 'Tu negocio';
+    }
+
+    if (msg) {
+      emptyState.style.display = 'none';
+      bubbleWrapper.style.display = 'flex';
+      bubbleText.textContent = msg;
+    } else {
+      emptyState.style.display = 'block';
+      bubbleWrapper.style.display = 'none';
+    }
+  }
+
+  function generateLink() {
+    const phone = document.getElementById('phone').value.trim().replace(/\D/g, '');
+    const msg = document.getElementById('message').value.trim();
+
+    if (!phone) { alert('Por favor ingresa tu número de WhatsApp.'); return; }
+    if (!msg) { alert('Por favor escribe el mensaje predeterminado.'); return; }
+
+    const encoded = encodeURIComponent(msg);
+    const link = `https://wa.me/${phone}?text=${encoded}`;
+
+    document.getElementById('result-link').textContent = link;
+    const box = document.getElementById('result-box');
+    box.style.display = 'block';
+    document.getElementById('copy-success').style.display = 'none';
+  }
+
+  function copyLink() {
+    const link = document.getElementById('result-link').textContent;
+    navigator.clipboard.writeText(link).then(() => {
+      const s = document.getElementById('copy-success');
+      s.style.display = 'block';
+      setTimeout(() => s.style.display = 'none', 3000);
+    });
+  }
+</script>
+</body>
+</html>
