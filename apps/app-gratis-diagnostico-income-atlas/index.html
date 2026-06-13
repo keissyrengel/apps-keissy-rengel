@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Diagnóstico de Monetización – Income Atlas</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- HERO -->
+  <div id="screen-hero" class="screen active">
+    <div class="hero-body">
+      <div class="hero-eyebrow"><span class="hero-dot"></span> Income Atlas</div>
+      <h1 class="hero-h1">Descubre cómo podrías <span>empezar a monetizar</span> online</h1>
+      <p class="hero-p">No todos deberían empezar igual. Este diagnóstico identifica qué caminos podrían encajar con tu experiencia, habilidades y etapa actual.</p>
+      <div class="trust-strip">
+        <div class="trust-strip-icon">⏱</div>
+        <span>Menos de 3 minutos · Sin promesas mágicas · Solo dirección estratégica</span>
+      </div>
+    </div>
+    <div class="cta-fixed">
+      <button class="btn-prime" onclick="startQuiz()">Empezar diagnóstico</button>
+    </div>
+    <div class="app-footer">Diagnóstico creado con la metodología de Income Atlas.</div>
+  </div>
+
+  <!-- QUESTION -->
+  <div id="screen-question" class="screen">
+    <div class="prog-bar">
+      <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+      <div class="prog-meta">
+        <span class="prog-step" id="prog-step"></span>
+        <span class="prog-count" id="prog-count"></span>
+      </div>
+    </div>
+    <div class="q-head">
+      <div class="q-label" id="q-label"></div>
+      <h2 class="q-title" id="q-title"></h2>
+      <p class="q-sub" id="q-sub"></p>
+      <div id="multi-tag" class="multi-tag" style="display:none">✦ Puedes elegir varias</div>
+    </div>
+    <div class="cards" id="cards-list" role="list" aria-live="polite"></div>
+    <div class="cta-fixed" id="cta-continue" style="display:none">
+      <button class="btn-prime" id="btn-continue" onclick="nextQuestion()" disabled>Continuar</button>
+    </div>
+    <div class="app-footer">Diagnóstico creado con la metodología de Income Atlas.</div>
+  </div>
+
+  <!-- LOADING -->
+  <div id="screen-loading" class="screen">
+    <div class="loader-orbit"><div class="loader-dot"></div></div>
+    <div class="loader-msg" id="loader-msg" aria-live="polite">Analizando tus respuestas…</div>
+    <div class="loader-sub">Identificando tu punto de partida estratégico</div>
+  </div>
+
+  <!-- TEASER -->
+  <div id="screen-teaser" class="screen">
+    <div class="teaser-head">
+      <div class="teaser-eyebrow">Tu diagnóstico está listo</div>
+      <h2 class="teaser-title">Tu camino principal parece ser:</h2>
+    </div>
+    <div class="path-card">
+      <div class="path-icon-wrap" id="main-icon"></div>
+      <div>
+        <div class="path-label">Camino principal</div>
+        <div class="path-name" id="main-name"></div>
+      </div>
+    </div>
+    <div class="teaser-divider"></div>
+    <p class="teaser-body-text">También detectamos dos caminos complementarios que podrían ayudarte a monetizar sin construir algo complejo desde cero.</p>
+    <div class="blur-block">
+      <div class="blur-title">Caminos complementarios</div>
+      <div class="blur-rows">
+        <div class="blur-row">Camino de Recursos Simples Propios</div>
+        <div class="blur-row">Camino de Recomendación Estratégica</div>
+      </div>
+      <div class="lock-badge">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Disponibles en tu diagnóstico completo
+      </div>
+    </div>
+    <div class="form-wrap">
+      <p class="form-title">Ingresa tus datos para recibir el diagnóstico completo:</p>
+      <div class="form-row">
+        <label class="form-label" for="inp-name">Nombre</label>
+        <input class="form-input" id="inp-name" type="text" placeholder="Tu nombre" autocomplete="given-name">
+        <div class="form-err" id="err-name"></div>
+      </div>
+      <div class="form-row">
+        <label class="form-label" for="inp-email">Correo electrónico</label>
+        <input class="form-input" id="inp-email" type="email" placeholder="tu@correo.com" autocomplete="email">
+        <div class="form-err" id="err-email"></div>
+      </div>
+      <p class="form-note">Te enviaremos tu diagnóstico y algunos próximos pasos. También podrás recibir información sobre Income Atlas.</p>
+    </div>
+    <div class="cta-fixed">
+      <button class="btn-prime" id="btn-submit" onclick="submitForm()">Enviarme mi diagnóstico</button>
+    </div>
+    <div class="app-footer">Diagnóstico creado con la metodología de Income Atlas.</div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div id="screen-success" class="screen">
+    <div class="success-body">
+      <div class="success-ring">✉️</div>
+      <h2 class="success-title">Listo. Tu diagnóstico va en camino.</h2>
+      <p class="success-p">Revisa tu correo en los próximos minutos. Si no lo ves, revisa la carpeta de promociones o spam.</p>
+      <div class="success-hr"></div>
+      <p class="success-pitch">Income Atlas te ayuda a convertir esta dirección inicial en un mapa de monetización completo, con conocimiento, cliente, oferta y sistema.</p>
+      <button class="btn-prime" id="btn-atlas" style="max-width:340px">Conocer Income Atlas</button>
+    </div>
+    <div class="app-footer">Diagnóstico creado con la metodología de Income Atlas.</div>
+  </div>
+
+</div><!-- #app -->
+<script src="./script.js"></script>
+</body>
+</html>
