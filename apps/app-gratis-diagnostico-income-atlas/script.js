@@ -6,7 +6,7 @@
 /* ----- CONSTANTS ----- */
 const INCOME_ATLAS_URL = "#income-atlas"; // Reemplaza con la URL real
 const SUBMIT_ENDPOINT  = "/submit-diagnosis";
-const DEMO_MODE        = true; // false en producción
+const DEMO_MODE        = false; // false en producción
 
 /* ----- PATHS (caminos de resultado) ----- */
 const PATHS = {
