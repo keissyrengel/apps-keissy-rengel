@@ -4,15 +4,16 @@
    ============================================================ */
 
 /* ----- CONSTANTS ----- */
-const INCOME_ATLAS_URL = "https://cursos.keissyrengel.com/lanzamiento-income-atlas";
+const INCOME_ATLAS_URL = "#income-atlas"; // Reemplaza con la URL real
 const SUBMIT_ENDPOINT  = "/submit-diagnosis";
-const DEMO_MODE        = false; // false en producción
+const DEMO_MODE        = true; // false en producción
 
 /* ----- PATHS (caminos de resultado) ----- */
 const PATHS = {
   recomendaciones: {
-    name:  "Camino de Recomendación Estratégica",
-    icon:  "🔗",
+    name:    "Marketing de afiliados",
+    tagline: "Recomienda productos o servicios de terceros y gana una comisión por cada venta.",
+    icon:    "🔗",
     diagnosis_title: "Tu punto de partida podría estar en convertir tu criterio en recomendaciones útiles.",
     summary: "Según tus respuestas, podrías empezar sin crear un producto propio desde cero. Tu oportunidad inicial puede estar en recomendar herramientas, recursos, productos o servicios que ya entiendes.",
     suggested_options: [
@@ -25,8 +26,9 @@ const PATHS = {
     pitch_angle: "Necesita convertir criterio y recomendaciones en una ruta de monetización alineada con su marca."
   },
   microactivos: {
-    name:  "Camino de Recursos Simples Propios",
-    icon:  "📦",
+    name:    "Crea productos digitales propios",
+    tagline: "Empaqueta lo que sabes en una guía, plantilla, curso corto o recurso descargable.",
+    icon:    "📦",
     diagnosis_title: "Tu punto de partida podría estar en transformar una parte de lo que sabes en un recurso simple.",
     summary: "Según tus respuestas, tienes conocimiento o ideas que podrían convertirse en un primer activo digital pequeño: una guía, checklist, plantilla, mini training o recurso práctico.",
     suggested_options: [
@@ -39,8 +41,9 @@ const PATHS = {
     pitch_angle: "Necesita convertir conocimiento disperso en un activo claro, específico y validable."
   },
   servicios: {
-    name:  "Camino de Servicios Estratégicos",
-    icon:  "🎯",
+    name:    "Ofrece servicios a terceros",
+    tagline: "Haz algo para alguien más y cobra por ello — diseño, asesoría, implementación, lo que sabes hacer.",
+    icon:    "🎯",
     diagnosis_title: "Tu punto de partida podría estar en vender una solución concreta antes de crear un producto grande.",
     summary: "Según tus respuestas, tienes una habilidad aplicable que podría resolver un problema específico. Ofrecer un servicio simple puede ayudarte a validar demanda y generar evidencia real.",
     suggested_options: [
@@ -53,8 +56,9 @@ const PATHS = {
     pitch_angle: "Necesita ordenar su habilidad en una oferta clara y usar la experiencia real como base de monetización."
   },
   experiencia: {
-    name:  "Camino de Oferta Basada en Experiencia",
-    icon:  "🧭",
+    name:    "Vende formaciones o asesorías",
+    tagline: "Monetiza tu experiencia directamente: cursos, mentorías, certificaciones, acompañamiento.",
+    icon:    "🧭",
     diagnosis_title: "Tu punto de partida podría estar en estructurar una oferta alrededor de lo que ya has probado.",
     summary: "Según tus respuestas, ya podrías tener experiencia, resultados o señales de demanda. El reto no es empezar desde cero, sino ordenar lo que sabes en una oferta clara y específica.",
     suggested_options: [
@@ -67,8 +71,9 @@ const PATHS = {
     pitch_angle: "Necesita convertir experiencia en metodología, mensaje y oferta estructurada."
   },
   claridad: {
-    name:  "Camino de Claridad Estratégica",
-    icon:  "🔍",
+    name:    "Primero trabaja en las bases",
+    tagline: "Todavía no es momento de elegir un modelo — necesitas claridad sobre qué puedes ofrecer y a quién.",
+    icon:    "🔍",
     diagnosis_title: "Tu punto de partida no es elegir un modelo todavía, sino aclarar qué puedes monetizar.",
     summary: "Según tus respuestas, puede que tengas ideas o habilidades, pero todavía falta claridad sobre qué sabes, para quién sería útil y qué problema específico podrías resolver.",
     suggested_options: [
@@ -326,8 +331,9 @@ function showLoading() {
 /* ----- TEASER ----- */
 function showTeaser() {
   const mp = PATHS[state.result.main];
-  document.getElementById('main-icon').textContent = mp.icon;
-  document.getElementById('main-name').textContent = mp.name;
+  document.getElementById('main-icon').textContent    = mp.icon;
+  document.getElementById('main-name').textContent    = mp.name;
+  document.getElementById('main-tagline').textContent = mp.tagline;
   showScreen('screen-teaser');
 }
 
