@@ -4,7 +4,7 @@
    ============================================================ */
 
 /* ----- CONSTANTS ----- */
-const INCOME_ATLAS_URL = "#income-atlas"; // Reemplaza con la URL real
+const INCOME_ATLAS_URL = "https://cursos.keissyrengel.com/lanzamiento-income-atlas";
 const SUBMIT_ENDPOINT  = "/submit-diagnosis";
 const DEMO_MODE        = false; // false en producción
 
