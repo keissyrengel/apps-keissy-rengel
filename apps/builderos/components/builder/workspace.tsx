@@ -12,13 +12,21 @@ type Message = { id: number; role: "user" | "builder" | "error"; text: string };
 type BuildRecord = { id: number; prompt: string; changes: FileChange[] };
 
 const BUILD_STEPS = ["Planning", "Reading files", "Editing", "Testing", "Preview ready"] as const;
+const LOCAL_PREVIEW_URL = "http://localhost:3001";
+const USE_LOCAL_PREVIEW = process.env.NODE_ENV === "development";
+
+function getVersionedPreviewUrl(url: string, version: number) {
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}build=${version}`;
+}
 
 export function Workspace() {
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [status, setStatus] = useState<BuilderStatus | null>(null);
   const [statusDetail, setStatusDetail] = useState<string | null>(null);
-  const [hasPreview, setHasPreview] = useState(false);
+  const [localPreviewAvailable, setLocalPreviewAvailable] = useState(false);
+  const [remotePreviewUrl, setRemotePreviewUrl] = useState<string | null>(null);
   const [previewVersion, setPreviewVersion] = useState(0);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
@@ -26,15 +34,23 @@ export function Workspace() {
   const [changesOpen, setChangesOpen] = useState(true);
   const buildId = useRef(0);
   const isBuilding = status !== null && status !== "Preview ready";
+  const previewUrl = USE_LOCAL_PREVIEW
+    ? localPreviewAvailable
+      ? LOCAL_PREVIEW_URL
+      : null
+    : remotePreviewUrl;
+  const hasPreview = previewUrl !== null;
 
   useEffect(() => {
+    if (!USE_LOCAL_PREVIEW) return;
+
     let cancelled = false;
     async function checkPreview() {
       try {
-        await fetch("http://localhost:3001", { mode: "no-cors", cache: "no-store" });
-        if (!cancelled) setHasPreview(true);
+        await fetch(LOCAL_PREVIEW_URL, { mode: "no-cors", cache: "no-store" });
+        if (!cancelled) setLocalPreviewAvailable(true);
       } catch {
-        if (!cancelled) setHasPreview(false);
+        if (!cancelled) setLocalPreviewAvailable(false);
       }
     }
     void checkPreview();
@@ -92,8 +108,12 @@ export function Workspace() {
       setBuilds((current) => [...current, { id, prompt: value, changes: result.changes }]);
       if (!result.success) throw new Error(result.error || "The generated app failed to build.");
 
-      setHasPreview(true);
-      setPreviewLoading(true);
+      if (USE_LOCAL_PREVIEW) {
+        setLocalPreviewAvailable(true);
+      } else if (result.previewUrl) {
+        setRemotePreviewUrl(result.previewUrl);
+      }
+      setPreviewLoading(USE_LOCAL_PREVIEW || Boolean(result.previewUrl));
       setPreviewVersion(id);
       setStatus("Preview ready");
       setStatusDetail(null);
@@ -113,7 +133,8 @@ export function Workspace() {
     setPrompt("");
     setMessages([]);
     setBuilds([]);
-    setHasPreview(false);
+    setLocalPreviewAvailable(false);
+    setRemotePreviewUrl(null);
     setBuildError(null);
     setStatus(null);
     setStatusDetail(null);
@@ -183,15 +204,15 @@ export function Workspace() {
 
         <section className="konvertis-grid relative flex min-h-0 flex-col bg-night" aria-label="Application preview">
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-brand-border-subtle bg-surface/35 px-4 sm:px-5">
-            <div className="flex items-center gap-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-copy"><Monitor className="size-3.5 text-electric" />Preview <span className="hidden rounded-full border border-brand-border bg-surface-secondary/55 px-2 py-1 font-mono text-[8px] font-normal normal-case tracking-normal text-muted sm:inline">localhost:3001</span></div>
+            <div className="flex items-center gap-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-copy"><Monitor className="size-3.5 text-electric" />Preview <span className="hidden rounded-full border border-brand-border bg-surface-secondary/55 px-2 py-1 font-mono text-[8px] font-normal normal-case tracking-normal text-muted sm:inline">{USE_LOCAL_PREVIEW ? "localhost:3001" : remotePreviewUrl ? "remote preview" : "waiting for preview"}</span></div>
             <button onClick={() => { setPreviewLoading(true); setPreviewVersion((version) => version + 1); }} disabled={!hasPreview} className="grid size-7 place-items-center rounded-md border border-brand-border bg-surface text-muted transition hover:border-electric/50 hover:text-electric focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-electric disabled:opacity-30" aria-label="Reload preview"><RotateCw className="size-3" /></button>
           </div>
           <div className="preview-ambient relative grid min-h-0 flex-1 place-items-center p-3 sm:p-6 lg:p-8">
             <WorkspacePanel className="relative z-10 grid size-full max-h-[780px] max-w-5xl place-items-center overflow-hidden border-brand-border bg-night shadow-[0_28px_90px_rgb(0_0_0/0.4),0_0_50px_rgb(0_148_255/0.035)]">
-              {hasPreview && <iframe key={previewVersion} src={`http://localhost:3001/?build=${previewVersion}`} title="Generated application" className="size-full border-0 bg-white" onLoad={() => setPreviewLoading(false)} onError={() => setHasPreview(false)} />}
+              {previewUrl && <iframe key={`${previewUrl}-${previewVersion}`} src={getVersionedPreviewUrl(previewUrl, previewVersion)} title="Generated application" className="size-full border-0 bg-white" onLoad={() => setPreviewLoading(false)} onError={() => { if (USE_LOCAL_PREVIEW) setLocalPreviewAvailable(false); else setRemotePreviewUrl(null); }} />}
               {(isBuilding || previewLoading) && <div className="absolute inset-0 grid place-items-center bg-night/95 backdrop-blur-sm"><div className="flex flex-col items-center px-6 text-center"><div className="relative mb-5 grid size-12 place-items-center rounded-xl border border-brand-border bg-surface-secondary text-acid shadow-[0_0_28px_rgb(224_255_5/0.08)]"><Sparkles className="size-4" /><span className="absolute -bottom-1 h-px w-5 bg-acid shadow-[0_0_8px_var(--primary)]" /></div><p className="text-sm font-bold text-ink">{status ?? "Loading preview"}</p><p className="mt-2 text-xs text-muted">Writing and validating real files</p></div></div>}
               {buildError && <div className="absolute inset-0 overflow-auto bg-night p-6 text-left text-ink"><div className="mx-auto max-w-2xl"><div className="flex items-center gap-2 text-sm font-bold text-neon"><AlertCircle className="size-4" />Generated app failed to compile</div><pre className="mt-4 whitespace-pre-wrap break-words rounded-xl border border-neon/20 bg-surface p-4 font-mono text-[11px] leading-5 text-copy">{buildError}</pre></div></div>}
-              {!hasPreview && !isBuilding && !buildError && <div className="flex flex-col items-center px-6 text-center"><div className="relative mb-5 grid size-11 place-items-center rounded-xl border border-brand-border bg-surface-secondary text-acid"><Code2 className="size-4" /><span className="absolute -right-1 -top-1 size-2 rounded-full border-2 border-night bg-electric" /></div><p className="font-display text-sm font-bold tracking-[-0.02em] text-ink">Your app will appear here</p><p className="mt-2 font-mono text-[10px] text-muted">real files · live on port 3001</p></div>}
+              {!hasPreview && !isBuilding && !buildError && <div className="flex flex-col items-center px-6 text-center"><div className="relative mb-5 grid size-11 place-items-center rounded-xl border border-brand-border bg-surface-secondary text-acid"><Code2 className="size-4" /><span className="absolute -right-1 -top-1 size-2 rounded-full border-2 border-night bg-electric" /></div><p className="font-display text-sm font-bold tracking-[-0.02em] text-ink">Your app will appear here</p><p className="mt-2 font-mono text-[10px] text-muted">{USE_LOCAL_PREVIEW ? "real files · live on port 3001" : "remote workspace · waiting for build"}</p></div>}
             </WorkspacePanel>
           </div>
         </section>
