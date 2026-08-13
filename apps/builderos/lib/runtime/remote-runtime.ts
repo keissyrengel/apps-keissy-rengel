@@ -12,6 +12,7 @@ const PREVIEW_PORT = 3001;
 const PREVIEW_COMMAND = "npm run dev -- --hostname 0.0.0.0 --port 3001";
 const COMMAND_TIMEOUT = 300_000;
 const LOG_LIMIT = 12_000;
+const HTTP_BODY_LOG_LIMIT = 4_000;
 
 type RemoteBindings = {
   Sandbox: DurableObjectNamespace<Sandbox>;
@@ -57,6 +58,48 @@ function elapsedSince(startedAt: number) {
 function relevantOutput(output: string) {
   const trimmed = output.trim();
   return trimmed.length > LOG_LIMIT ? `[last ${LOG_LIMIT} chars]\n${trimmed.slice(-LOG_LIMIT)}` : trimmed;
+}
+
+function responseDiagnosticHeaders(headers: Headers) {
+  const relevant: Record<string, string> = {};
+  for (const [name, value] of headers.entries()) {
+    const normalized = name.toLowerCase();
+    if (
+      normalized === "server" ||
+      normalized === "content-type" ||
+      normalized.startsWith("cf-") ||
+      normalized.startsWith("x-cloudflare-")
+    ) {
+      relevant[normalized] = value;
+    }
+  }
+  return relevant;
+}
+
+async function diagnoseSandboxHttp(sandbox: Sandbox, host: "127.0.0.1" | "localhost") {
+  const command = `curl -i --max-time 10 http://${host}:${PREVIEW_PORT}/`;
+  const startedAt = Date.now();
+  diagnostic("info", "sandbox HTTP check", { event: "started", host, command });
+  try {
+    const result = await sandbox.exec(command, { timeout: 15_000 });
+    diagnostic(result.success ? "info" : "error", "sandbox HTTP check", {
+      event: "completed",
+      host,
+      command,
+      durationMs: elapsedSince(startedAt),
+      exitCode: result.exitCode,
+      response: result.stdout.slice(0, HTTP_BODY_LOG_LIMIT),
+      stderr: relevantOutput(result.stderr),
+    });
+  } catch (error) {
+    diagnostic("error", "sandbox HTTP check", {
+      event: "failed",
+      host,
+      command,
+      durationMs: elapsedSince(startedAt),
+      error: fullError(error),
+    });
+  }
 }
 
 function diagnostic(
@@ -442,6 +485,9 @@ export class RemoteRuntime implements BuilderRuntime {
       throw new Error(`Remote preview did not respond on port ${PREVIEW_PORT}.`);
     }
 
+    await diagnoseSandboxHttp(sandbox, "127.0.0.1");
+    await diagnoseSandboxHttp(sandbox, "localhost");
+
     async function getPreviewTunnel(attempt: 1 | 2) {
       const tunnelStartedAt = Date.now();
       diagnostic("info", "tunnel creation", {
@@ -515,6 +561,8 @@ export class RemoteRuntime implements BuilderRuntime {
     try {
       const response = await fetch(previewUrl, { redirect: "follow" });
       const contentType = response.headers.get("content-type");
+      const body = await response.text();
+      const headers = responseDiagnosticHeaders(response.headers);
       diagnostic(response.ok ? "info" : "error", "tunnel HTTP check", {
         event: "completed",
         previewUrl,
@@ -523,6 +571,8 @@ export class RemoteRuntime implements BuilderRuntime {
         status: response.status,
         statusText: response.statusText,
         contentType,
+        headers,
+        body: body.slice(0, HTTP_BODY_LOG_LIMIT),
         ok: response.ok,
       });
       if (!response.ok) throw new Error(`Tunnel returned HTTP ${response.status} ${response.statusText}.`);
