@@ -1,9 +1,16 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import type { Sandbox as SandboxDurableObject } from "@cloudflare/sandbox";
+import { configureRemoteRuntime } from "../lib/runtime/remote-runtime";
+
+export { Sandbox } from "@cloudflare/sandbox";
 
 interface Env {
   ASSETS: Fetcher;
+  Sandbox: DurableObjectNamespace<SandboxDurableObject>;
+  BUILDER_RUNTIME: "remote";
+  SANDBOX_TRANSPORT: "rpc";
   DB: D1Database;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -27,6 +34,7 @@ interface ExecutionContext {
 
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    configureRemoteRuntime({ Sandbox: env.Sandbox });
     const url = new URL(request.url);
 
     if (url.pathname === "/_vinext/image") {

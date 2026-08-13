@@ -2,8 +2,8 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 
 import type { BuilderStatus, BuildStreamEvent } from "../lib/builder/types";
-import { createRuntime } from "../lib/runtime/runtime-manager";
-import type { BuilderRuntimeName, LocalBuilderEngine } from "../lib/runtime/types";
+import { LocalRuntime } from "../lib/runtime/local-runtime";
+import type { LocalBuilderEngine } from "../lib/runtime/types";
 
 async function readJson(request: IncomingMessage) {
   const chunks: Buffer[] = [];
@@ -19,9 +19,9 @@ function status(response: ServerResponse, value: BuilderStatus, detail?: string)
   send(response, { type: "status", status: value, detail });
 }
 
-export function localBuilder(selectedEngine?: LocalBuilderEngine, selectedRuntime: BuilderRuntimeName = "local"): Plugin {
+export function localBuilder(selectedEngine?: LocalBuilderEngine): Plugin {
   const engine = selectedEngine ?? (process.env.BUILDER_ENGINE === "local" ? "local" : "codex");
-  const runtimePromise = createRuntime({ runtime: selectedRuntime, localEngine: engine, environment: "development" });
+  const runtimePromise = Promise.resolve(new LocalRuntime(engine));
   return {
     name: "builderos-engine",
     configureServer(server) {

@@ -97,7 +97,7 @@ export function Workspace() {
       setPreviewVersion(id);
       setStatus("Preview ready");
       setStatusDetail(null);
-      setMessages((current) => [...current, { id: id + 0.5, role: "builder", text: "Your app is ready." }]);
+      setMessages((current) => [...current, { id: id + 0.5, role: "builder", text: result.message ?? "Your app is ready." }]);
       window.setTimeout(() => setStatus(null), 700);
     } catch (error) {
       const message = error instanceof Error ? error.message : "The generated app failed to build.";

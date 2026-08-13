@@ -75,7 +75,9 @@ prompt → BuilderOS backend → Codex App Server → generated-app files
 
 One in-memory Codex thread is associated with `generated-app` for the current BuilderOS process. The App Server process is reused between prompts and is shut down gracefully with the development server.
 
-`BUILDER_RUNTIME=local` preserves this complete local pipeline. `BUILDER_RUNTIME=remote` routes builds to `lib/runtime/remote-runtime.ts`, which currently returns `Remote runtime is not configured yet.` without executing commands. Cloudflare Sandbox/Containers will be connected at that runtime boundary later.
+`BUILDER_RUNTIME=local` preserves this complete local pipeline. `BUILDER_RUNTIME=remote` routes builds to `lib/runtime/remote-runtime.ts`, obtains the fixed test sandbox `builderos-test` over RPC, and runs `node --version` as a connectivity check. It does not generate code or use the prompt as a command.
+
+The remote runtime requires the `Sandbox` Durable Object binding, its SQLite migration, the Sandbox container declared in `wrangler.jsonc`, and `SANDBOX_TRANSPORT=rpc`. Deploying the Worker and container requires Cloudflare Containers/Sandbox access and Docker in the deployment environment.
 
 ## Monorepo placement
 

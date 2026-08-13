@@ -24,6 +24,7 @@ export interface GenerateResult {
   success: boolean;
   changes: FileChange[];
   error?: string;
+  message?: string;
   state?: ProjectState;
 }
 

@@ -15,7 +15,6 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
 const localBindingConfig = {
   main: "./worker/index.ts",
-  compatibility_flags: ["nodejs_compat"],
   d1_databases: d1
     ? [
         {
@@ -44,7 +43,6 @@ export default defineConfig(async ({ mode }) => {
   const builderOsRoot = getBuilderOsRoot();
   const localEnv = loadEnv(mode, builderOsRoot, "");
   const builderEngine = localEnv.BUILDER_ENGINE === "local" ? "local" : "codex";
-  const builderRuntime = localEnv.BUILDER_RUNTIME === "remote" ? "remote" : "local";
   if (localEnv.CODEX_MODEL) process.env.CODEX_MODEL = localEnv.CODEX_MODEL;
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
@@ -52,13 +50,16 @@ export default defineConfig(async ({ mode }) => {
 
   return {
     root: builderOsRoot,
+    ssr: {
+      noExternal: ["@cloudflare/sandbox", "@cloudflare/containers"],
+    },
     server: {
       watch: isCodexSeatbeltSandbox
         ? { useFsEvents: false, usePolling: true, ignored: ["**/generated-app/**"] }
         : { ignored: ["**/generated-app/**"] },
     },
     plugins: [
-      localBuilder(builderEngine, builderRuntime),
+      localBuilder(builderEngine),
       vinext(),
       sites(),
       cloudflare({
