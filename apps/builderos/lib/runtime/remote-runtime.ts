@@ -13,6 +13,7 @@ const PREVIEW_COMMAND = "npm run dev -- --hostname 0.0.0.0 --port 3001";
 const COMMAND_TIMEOUT = 300_000;
 const LOG_LIMIT = 12_000;
 const HTTP_BODY_LOG_LIMIT = 4_000;
+const TUNNEL_PROPAGATION_DELAY_MS = 3_000;
 
 type RemoteBindings = {
   Sandbox: DurableObjectNamespace<Sandbox>;
@@ -77,20 +78,25 @@ function responseDiagnosticHeaders(headers: Headers) {
 }
 
 async function diagnoseSandboxHttp(sandbox: Sandbox, host: "127.0.0.1" | "localhost") {
-  const command = `curl -i --max-time 10 http://${host}:${PREVIEW_PORT}/`;
+  const command = `curl -sS -i --max-time 10 http://${host}:${PREVIEW_PORT}/`;
   const startedAt = Date.now();
   diagnostic("info", "sandbox HTTP check", { event: "started", host, command });
   try {
     const result = await sandbox.exec(command, { timeout: 15_000 });
-    diagnostic(result.success ? "info" : "error", "sandbox HTTP check", {
+    const statusMatch = result.stdout.match(/^HTTP\/\S+\s+(\d{3})/m);
+    const httpStatus = statusMatch ? Number(statusMatch[1]) : null;
+    const healthy = result.success && httpStatus === 200;
+    diagnostic(healthy ? "info" : "error", "sandbox HTTP check", {
       event: "completed",
       host,
       command,
       durationMs: elapsedSince(startedAt),
       exitCode: result.exitCode,
+      httpStatus,
       response: result.stdout.slice(0, HTTP_BODY_LOG_LIMIT),
       stderr: relevantOutput(result.stderr),
     });
+    return { healthy, httpStatus, response: result.stdout };
   } catch (error) {
     diagnostic("error", "sandbox HTTP check", {
       event: "failed",
@@ -99,7 +105,16 @@ async function diagnoseSandboxHttp(sandbox: Sandbox, host: "127.0.0.1" | "localh
       durationMs: elapsedSince(startedAt),
       error: fullError(error),
     });
+    return { healthy: false, httpStatus: null, response: "" };
   }
+}
+
+function wait(milliseconds: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function cloudflareErrorCode(body: string) {
+  return body.match(/\b(1\d{3})\b/)?.[1] ?? null;
 }
 
 function diagnostic(
@@ -485,8 +500,25 @@ export class RemoteRuntime implements BuilderRuntime {
       throw new Error(`Remote preview did not respond on port ${PREVIEW_PORT}.`);
     }
 
-    await diagnoseSandboxHttp(sandbox, "127.0.0.1");
-    await diagnoseSandboxHttp(sandbox, "localhost");
+    const previewLogs = await previewProcess.getLogs().catch(() => null);
+    const listensOnExpectedAddress = /(?:0\.0\.0\.0|Network:\s+http:\/\/0\.0\.0\.0):3001/i.test(
+      `${previewLogs?.stdout ?? ""}\n${previewLogs?.stderr ?? ""}`,
+    );
+    diagnostic(listensOnExpectedAddress ? "info" : "error", "tunnel preflight", {
+      event: "preview-process-logs",
+      processId: PREVIEW_PROCESS_ID,
+      status: tunnelProcessStatus,
+      expectedAddress: "0.0.0.0:3001",
+      listensOnExpectedAddress,
+      stdout: relevantOutput(previewLogs?.stdout ?? ""),
+      stderr: relevantOutput(previewLogs?.stderr ?? ""),
+    });
+
+    const loopbackCheck = await diagnoseSandboxHttp(sandbox, "127.0.0.1");
+    const localhostCheck = await diagnoseSandboxHttp(sandbox, "localhost");
+    if (!loopbackCheck.healthy || !localhostCheck.healthy) {
+      throw new Error("Remote preview server failed its internal HTTP checks.");
+    }
 
     async function getPreviewTunnel(attempt: 1 | 2) {
       const tunnelStartedAt = Date.now();
@@ -519,14 +551,89 @@ export class RemoteRuntime implements BuilderRuntime {
       }
     }
 
+    async function logTunnelState(event: string) {
+      try {
+        const tunnels = await sandbox.tunnels.list();
+        diagnostic("info", "tunnel state", {
+          event,
+          port: PREVIEW_PORT,
+          tunnels: tunnels.map((item) => ({
+            id: item.id,
+            port: item.port,
+            url: item.url,
+            hostname: item.hostname,
+            createdAt: item.createdAt,
+          })),
+        });
+      } catch (error) {
+        diagnostic("error", "tunnel state", { event: `${event}-failed`, error: fullError(error) });
+      }
+    }
+
+    async function checkTunnelHttp(currentTunnel: Awaited<ReturnType<typeof sandbox.tunnels.get>>, attempt: 1 | 2) {
+      diagnostic("info", "tunnel propagation", {
+        event: "waiting",
+        attempt,
+        previewUrl: currentTunnel.url,
+        delayMs: TUNNEL_PROPAGATION_DELAY_MS,
+      });
+      await wait(TUNNEL_PROPAGATION_DELAY_MS);
+
+      const fetchStartedAt = Date.now();
+      diagnostic("info", "tunnel HTTP check", {
+        event: "started",
+        attempt,
+        previewUrl: currentTunnel.url,
+        hostname: currentTunnel.hostname,
+      });
+      try {
+        const response = await fetch(currentTunnel.url, { redirect: "follow" });
+        const body = await response.text();
+        const code = cloudflareErrorCode(body);
+        diagnostic(response.ok ? "info" : "error", "tunnel HTTP check", {
+          event: "completed",
+          attempt,
+          previewUrl: currentTunnel.url,
+          hostname: currentTunnel.hostname,
+          durationMs: elapsedSince(fetchStartedAt),
+          status: response.status,
+          statusText: response.statusText,
+          contentType: response.headers.get("content-type"),
+          headers: responseDiagnosticHeaders(response.headers),
+          body,
+          cloudflareErrorCode: code,
+          ok: response.ok,
+        });
+        return { ok: response.ok, status: response.status, body, cloudflareErrorCode: code };
+      } catch (error) {
+        diagnostic("error", "tunnel HTTP check", {
+          event: "fetch-failed",
+          attempt,
+          previewUrl: currentTunnel.url,
+          hostname: currentTunnel.hostname,
+          durationMs: elapsedSince(fetchStartedAt),
+          error: fullError(error),
+        });
+        return { ok: false, status: null, body: "", cloudflareErrorCode: null };
+      }
+    }
+
     let tunnel: Awaited<ReturnType<typeof sandbox.tunnels.get>>;
     try {
       tunnel = await getPreviewTunnel(1);
     } catch {
+      throw new Error("Remote app is running, but Cloudflare preview tunnel is unavailable.");
+    }
+    await logTunnelState("after-create");
+    let tunnelCheck = await checkTunnelHttp(tunnel, 1);
+
+    if (tunnelCheck.status === 530) {
       const destroyStartedAt = Date.now();
       diagnostic("info", "tunnel cleanup", {
         event: "started",
         port: PREVIEW_PORT,
+        previousTunnelUrl: tunnel.url,
+        cloudflareErrorCode: tunnelCheck.cloudflareErrorCode,
       });
       try {
         await sandbox.tunnels.destroy(PREVIEW_PORT);
@@ -542,51 +649,44 @@ export class RemoteRuntime implements BuilderRuntime {
           durationMs: elapsedSince(destroyStartedAt),
           error: fullError(destroyError),
         });
+        throw new Error("Remote app is running, but Cloudflare preview tunnel is unavailable.");
+      }
+
+      const recreateProcessStatus = await previewProcess.getStatus().catch(() => "error" as const);
+      let recreatePortReady = false;
+      try {
+        if (recreateProcessStatus === "running") {
+          await previewProcess.waitForPort(PREVIEW_PORT, { timeout: 5_000 });
+          recreatePortReady = true;
+        }
+      } catch {
+        recreatePortReady = false;
+      }
+      diagnostic(recreateProcessStatus === "running" && recreatePortReady ? "info" : "error", "tunnel recreate preflight", {
+        event: "completed",
+        processId: PREVIEW_PROCESS_ID,
+        processStatus: recreateProcessStatus,
+        port: PREVIEW_PORT,
+        portReady: recreatePortReady,
+      });
+      if (recreateProcessStatus !== "running" || !recreatePortReady) {
+        throw new Error("Remote app is running, but Cloudflare preview tunnel is unavailable.");
       }
 
       try {
         tunnel = await getPreviewTunnel(2);
       } catch {
-        throw new Error("Remote preview tunnel is unavailable.");
+        throw new Error("Remote app is running, but Cloudflare preview tunnel is unavailable.");
       }
+      await logTunnelState("after-recreate");
+      tunnelCheck = await checkTunnelHttp(tunnel, 2);
+    }
+
+    if (!tunnelCheck.ok) {
+      throw new Error("Remote app is running, but Cloudflare preview tunnel is unavailable.");
     }
 
     const previewUrl = tunnel.url;
-    const fetchStartedAt = Date.now();
-    diagnostic("info", "tunnel HTTP check", {
-      event: "started",
-      previewUrl,
-      hostname: tunnel.hostname,
-    });
-    try {
-      const response = await fetch(previewUrl, { redirect: "follow" });
-      const contentType = response.headers.get("content-type");
-      const body = await response.text();
-      const headers = responseDiagnosticHeaders(response.headers);
-      diagnostic(response.ok ? "info" : "error", "tunnel HTTP check", {
-        event: "completed",
-        previewUrl,
-        hostname: tunnel.hostname,
-        durationMs: elapsedSince(fetchStartedAt),
-        status: response.status,
-        statusText: response.statusText,
-        contentType,
-        headers,
-        body: body.slice(0, HTTP_BODY_LOG_LIMIT),
-        ok: response.ok,
-      });
-      if (!response.ok) throw new Error(`Tunnel returned HTTP ${response.status} ${response.statusText}.`);
-    } catch (error) {
-      diagnostic("error", "tunnel HTTP check", {
-        event: "failed",
-        previewUrl,
-        hostname: tunnel.hostname,
-        durationMs: elapsedSince(fetchStartedAt),
-        error: fullError(error),
-      });
-      throw new Error("Remote preview tunnel did not pass its HTTP health check.");
-    }
-
     const message = "Remote generated-app ready.";
     onEvent({ status: "Preview ready", detail: "Preview ready" });
     return {
