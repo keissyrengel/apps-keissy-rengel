@@ -25,6 +25,7 @@ export interface GenerateResult {
   changes: FileChange[];
   error?: string;
   message?: string;
+  previewUrl?: string;
   state?: ProjectState;
 }
 
