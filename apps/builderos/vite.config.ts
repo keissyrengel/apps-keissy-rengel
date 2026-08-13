@@ -50,9 +50,6 @@ export default defineConfig(async ({ mode }) => {
 
   return {
     root: builderOsRoot,
-    ssr: {
-      noExternal: ["@cloudflare/sandbox", "@cloudflare/containers"],
-    },
     server: {
       watch: isCodexSeatbeltSandbox
         ? { useFsEvents: false, usePolling: true, ignored: ["**/generated-app/**"] }
