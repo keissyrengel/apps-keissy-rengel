@@ -5,6 +5,7 @@ import type { Sandbox as SandboxDurableObject } from "@cloudflare/sandbox";
 import { configureRemoteRuntime } from "../lib/runtime/remote-runtime";
 
 export { Sandbox } from "@cloudflare/sandbox";
+export { RemoteRuntime } from "../lib/runtime/remote-runtime";
 
 interface Env {
   ASSETS: Fetcher;
