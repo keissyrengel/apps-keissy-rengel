@@ -63,6 +63,10 @@ export function Workspace() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: value }),
       });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!response.ok || !contentType.includes("application/x-ndjson")) {
+        throw new Error("Build is currently available only in the local BuilderOS workspace.");
+      }
       if (!response.body) throw new Error("BuilderOS did not return an event stream.");
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
