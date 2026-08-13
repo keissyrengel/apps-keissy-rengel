@@ -36,6 +36,20 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
+function fullError(error: unknown) {
+  if (!(error instanceof Error)) return { value: String(error) };
+  return {
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+    cause: error.cause instanceof Error
+      ? { name: error.cause.name, message: error.cause.message, stack: error.cause.stack }
+      : error.cause === undefined
+        ? undefined
+        : String(error.cause),
+  };
+}
+
 function elapsedSince(startedAt: number) {
   return Date.now() - startedAt;
 }
@@ -379,26 +393,148 @@ export class RemoteRuntime implements BuilderRuntime {
       }
     }
 
-    let previewUrl: string;
-    const tunnelStartedAt = Date.now();
-    diagnostic("info", "tunnel creation", { event: "started", port: PREVIEW_PORT });
+    const tunnelPreflightStartedAt = Date.now();
+    const tunnelProcessStatus = await previewProcess.getStatus().catch(() => "error" as const);
+    diagnostic(tunnelProcessStatus === "running" ? "info" : "error", "tunnel preflight", {
+      event: "process-status",
+      processId: PREVIEW_PROCESS_ID,
+      status: tunnelProcessStatus,
+      durationMs: elapsedSince(tunnelPreflightStartedAt),
+    });
+    if (tunnelProcessStatus !== "running") {
+      const logs = await previewProcess.getLogs().catch(() => null);
+      diagnostic("error", "tunnel preflight", {
+        event: "server-not-running",
+        processId: PREVIEW_PROCESS_ID,
+        status: tunnelProcessStatus,
+        stdout: relevantOutput(logs?.stdout ?? ""),
+        stderr: relevantOutput(logs?.stderr ?? ""),
+      });
+      throw new Error("Remote preview server is not running.");
+    }
+
+    const preflightPortStartedAt = Date.now();
+    diagnostic("info", "tunnel preflight", {
+      event: "port-check-started",
+      processId: PREVIEW_PROCESS_ID,
+      port: PREVIEW_PORT,
+      timeoutMs: 5_000,
+    });
     try {
-      const tunnel = await sandbox.tunnels.get(PREVIEW_PORT);
-      previewUrl = tunnel.url;
-      diagnostic("info", "tunnel creation", {
-        event: "completed",
+      await previewProcess.waitForPort(PREVIEW_PORT, { timeout: 5_000 });
+      diagnostic("info", "tunnel preflight", {
+        event: "port-check-completed",
+        processId: PREVIEW_PROCESS_ID,
         port: PREVIEW_PORT,
-        durationMs: elapsedSince(tunnelStartedAt),
-        previewUrl,
+        durationMs: elapsedSince(preflightPortStartedAt),
       });
     } catch (error) {
-      diagnostic("error", "tunnel creation", {
-        event: "failed",
+      const logs = await previewProcess.getLogs().catch(() => null);
+      diagnostic("error", "tunnel preflight", {
+        event: "port-check-failed",
+        processId: PREVIEW_PROCESS_ID,
         port: PREVIEW_PORT,
-        durationMs: elapsedSince(tunnelStartedAt),
-        error: errorMessage(error),
+        durationMs: elapsedSince(preflightPortStartedAt),
+        error: fullError(error),
+        stdout: relevantOutput(logs?.stdout ?? ""),
+        stderr: relevantOutput(logs?.stderr ?? ""),
       });
-      throw new Error("Remote preview tunnel is unavailable.");
+      throw new Error(`Remote preview did not respond on port ${PREVIEW_PORT}.`);
+    }
+
+    async function getPreviewTunnel(attempt: 1 | 2) {
+      const tunnelStartedAt = Date.now();
+      diagnostic("info", "tunnel creation", {
+        event: "started",
+        attempt,
+        port: PREVIEW_PORT,
+      });
+      try {
+        const createdTunnel = await sandbox.tunnels.get(PREVIEW_PORT);
+        diagnostic("info", "tunnel creation", {
+          event: "completed",
+          attempt,
+          port: PREVIEW_PORT,
+          durationMs: elapsedSince(tunnelStartedAt),
+          tunnelId: createdTunnel.id,
+          previewUrl: createdTunnel.url,
+          hostname: createdTunnel.hostname,
+        });
+        return createdTunnel;
+      } catch (error) {
+        diagnostic("error", "tunnel creation", {
+          event: "failed",
+          attempt,
+          port: PREVIEW_PORT,
+          durationMs: elapsedSince(tunnelStartedAt),
+          error: fullError(error),
+        });
+        throw error;
+      }
+    }
+
+    let tunnel: Awaited<ReturnType<typeof sandbox.tunnels.get>>;
+    try {
+      tunnel = await getPreviewTunnel(1);
+    } catch {
+      const destroyStartedAt = Date.now();
+      diagnostic("info", "tunnel cleanup", {
+        event: "started",
+        port: PREVIEW_PORT,
+      });
+      try {
+        await sandbox.tunnels.destroy(PREVIEW_PORT);
+        diagnostic("info", "tunnel cleanup", {
+          event: "completed",
+          port: PREVIEW_PORT,
+          durationMs: elapsedSince(destroyStartedAt),
+        });
+      } catch (destroyError) {
+        diagnostic("error", "tunnel cleanup", {
+          event: "failed",
+          port: PREVIEW_PORT,
+          durationMs: elapsedSince(destroyStartedAt),
+          error: fullError(destroyError),
+        });
+      }
+
+      try {
+        tunnel = await getPreviewTunnel(2);
+      } catch {
+        throw new Error("Remote preview tunnel is unavailable.");
+      }
+    }
+
+    const previewUrl = tunnel.url;
+    const fetchStartedAt = Date.now();
+    diagnostic("info", "tunnel HTTP check", {
+      event: "started",
+      previewUrl,
+      hostname: tunnel.hostname,
+    });
+    try {
+      const response = await fetch(previewUrl, { redirect: "follow" });
+      const contentType = response.headers.get("content-type");
+      diagnostic(response.ok ? "info" : "error", "tunnel HTTP check", {
+        event: "completed",
+        previewUrl,
+        hostname: tunnel.hostname,
+        durationMs: elapsedSince(fetchStartedAt),
+        status: response.status,
+        statusText: response.statusText,
+        contentType,
+        ok: response.ok,
+      });
+      if (!response.ok) throw new Error(`Tunnel returned HTTP ${response.status} ${response.statusText}.`);
+    } catch (error) {
+      diagnostic("error", "tunnel HTTP check", {
+        event: "failed",
+        previewUrl,
+        hostname: tunnel.hostname,
+        durationMs: elapsedSince(fetchStartedAt),
+        error: fullError(error),
+      });
+      throw new Error("Remote preview tunnel did not pass its HTTP health check.");
     }
 
     const message = "Remote generated-app ready.";
