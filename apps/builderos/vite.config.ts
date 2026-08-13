@@ -44,6 +44,7 @@ export default defineConfig(async ({ mode }) => {
   const builderOsRoot = getBuilderOsRoot();
   const localEnv = loadEnv(mode, builderOsRoot, "");
   const builderEngine = localEnv.BUILDER_ENGINE === "local" ? "local" : "codex";
+  const builderRuntime = localEnv.BUILDER_RUNTIME === "remote" ? "remote" : "local";
   if (localEnv.CODEX_MODEL) process.env.CODEX_MODEL = localEnv.CODEX_MODEL;
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
@@ -57,7 +58,7 @@ export default defineConfig(async ({ mode }) => {
         : { ignored: ["**/generated-app/**"] },
     },
     plugins: [
-      localBuilder(builderEngine),
+      localBuilder(builderEngine, builderRuntime),
       vinext(),
       sites(),
       cloudflare({

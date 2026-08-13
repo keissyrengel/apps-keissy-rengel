@@ -46,6 +46,7 @@ Copy `.env.example` to `.env.local` when overrides are needed. Do not commit `.e
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
+| `BUILDER_RUNTIME` | `local` in development, `remote` in production | Selects the local filesystem/Codex runtime or the future Cloudflare runtime. The remote runtime is currently a controlled stub. |
 | `BUILDER_ENGINE` | `codex` | Use `codex` for Codex App Server or `local` for the template fallback. |
 | `CODEX_MODEL` | Codex configuration | Optional model override. Usually left unset. |
 
@@ -59,7 +60,8 @@ apps/builderos/
 ├── components/          BuilderOS UI
 ├── lib/
 │   ├── builder/         Local fallback generator and project manager
-│   └── codex/           App Server client, thread manager and event mapping
+│   ├── codex/           App Server client, thread manager and event mapping
+│   └── runtime/         Local/remote runtime boundary and selection
 ├── build/               Local API middleware and Cloudflare build helpers
 └── generated-app/       Independent Next.js application edited by Codex
 ```
@@ -72,6 +74,8 @@ prompt → BuilderOS backend → Codex App Server → generated-app files
 ```
 
 One in-memory Codex thread is associated with `generated-app` for the current BuilderOS process. The App Server process is reused between prompts and is shut down gracefully with the development server.
+
+`BUILDER_RUNTIME=local` preserves this complete local pipeline. `BUILDER_RUNTIME=remote` routes builds to `lib/runtime/remote-runtime.ts`, which currently returns `Remote runtime is not configured yet.` without executing commands. Cloudflare Sandbox/Containers will be connected at that runtime boundary later.
 
 ## Monorepo placement
 
