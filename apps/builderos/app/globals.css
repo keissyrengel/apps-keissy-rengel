@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+:root {
+  --background: #090014;
+  --surface: #1a072e;
+  --surface-secondary: #29124c;
+  --primary: #e0ff05;
+  --blue: #0094ff;
+  --pink: #ff2165;
+  --text-primary: #ffffff;
+  --text-secondary: #c7bed2;
+  --text-muted: #80728f;
+  --border: #3c215a;
+  --border-subtle: #2a123d;
+  --font-display: "Garet", "Avenir Next", "Century Gothic", sans-serif;
+  --font-ui: "Open Sans", "Segoe UI", Arial, sans-serif;
+  --font-code: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--text-primary);
+  --color-night: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-acid: var(--primary);
+  --color-electric: var(--blue);
+  --color-neon: var(--pink);
+  --color-ink: var(--text-primary);
+  --color-copy: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-brand-border: var(--border);
+  --color-brand-border-subtle: var(--border-subtle);
+  --font-sans: var(--font-ui);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-code);
+}
+
+* { box-sizing: border-box; }
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+}
+
+button,
+textarea { font: inherit; }
+
+button { -webkit-tap-highlight-color: transparent; }
+
+::selection {
+  background: var(--primary);
+  color: var(--background);
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+
+.konvertis-grid {
+  background-image:
+    linear-gradient(rgb(224 255 5 / 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(224 255 5 / 0.018) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+
+.preview-ambient::before {
+  position: absolute;
+  inset: 12% 15%;
+  content: "";
+  pointer-events: none;
+  border-radius: 999px;
+  background: rgb(0 148 255 / 0.07);
+  filter: blur(70px);
+}
