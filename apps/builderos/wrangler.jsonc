@@ -6,7 +6,10 @@
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
     "BUILDER_RUNTIME": "remote",
-    "SANDBOX_TRANSPORT": "rpc"
+    "SANDBOX_TRANSPORT": "rpc",
+    "CLOUDFLARE_ACCOUNT_ID": "b25ab5b236b708b798698527167947c4",
+    "CLOUDFLARE_TUNNEL_ACCOUNT_ID": "b25ab5b236b708b798698527167947c4",
+    "CLOUDFLARE_ZONE_ID": "1129467082c9d9259bdfc881f72322e3"
   },
   "dev": {
     "enable_containers": false
