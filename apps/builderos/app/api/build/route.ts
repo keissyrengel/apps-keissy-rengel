@@ -1,41 +1,91 @@
-import type { BuildStreamEvent } from "@/lib/builder/types";
-import { createRuntime } from "@/lib/runtime/runtime-manager";
+import { generateApp } from "@/lib/ai/app-generator";
+import type { BuildStreamEvent, GenerateResult } from "@/lib/builder/types";
+import { getConfig, isAuthorized } from "@/lib/env";
 
 const encoder = new TextEncoder();
+/** Cadence for progress pings; also keeps the ndjson connection warm. */
+const PROGRESS_INTERVAL_MS = 1_500;
 
 function encode(event: BuildStreamEvent) {
   return encoder.encode(`${JSON.stringify(event)}\n`);
 }
 
 export async function POST(request: Request) {
-  let prompt = "";
-  try {
-    const body = await request.json() as { prompt?: string };
-    prompt = body.prompt?.trim() ?? "";
-  } catch {
-    return streamResult({ success: false, changes: [], error: "Invalid build request." }, 400);
+  const config = getConfig();
+
+  if (!isAuthorized(request, config)) {
+    return immediate({ success: false, error: "Invalid access code." }, 401);
   }
 
-  if (!prompt) return streamResult({ success: false, changes: [], error: "Enter a build instruction." }, 400);
+  let prompt = "";
+  let previousHtml: string | undefined;
+  try {
+    const body = (await request.json()) as { prompt?: string; previousHtml?: string };
+    prompt = body.prompt?.trim() ?? "";
+    previousHtml = body.previousHtml?.trim() || undefined;
+  } catch {
+    return immediate({ success: false, error: "Invalid build request." }, 400);
+  }
+
+  if (!prompt) {
+    return immediate({ success: false, error: "Enter a build instruction." }, 400);
+  }
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      let closed = false;
+      const send = (event: BuildStreamEvent) => {
+        if (!closed) controller.enqueue(encode(event));
+      };
+
+      send({
+        type: "status",
+        status: "Planning",
+        detail: previousHtml ? "Reading the current app" : "Designing the app",
+      });
+
+      let lastPing = 0;
+      let characters = 0;
+
       try {
-        const runtime = await createRuntime();
-        const result = await runtime.build(prompt, (event) => {
-          controller.enqueue(encode({ type: "status", ...event }));
+        const app = await generateApp({
+          prompt,
+          previousHtml,
+          config,
+          onProgress: (count) => {
+            characters = count;
+            const now = Date.now();
+            if (now - lastPing < PROGRESS_INTERVAL_MS) return;
+            lastPing = now;
+            send({
+              type: "status",
+              status: "Writing code",
+              detail: `${Math.round(characters / 1000)}k characters written`,
+            });
+          },
         });
-        controller.enqueue(encode({ type: "result", result }));
+
+        send({ type: "status", status: "Rendering preview", detail: app.name });
+        send({
+          type: "result",
+          result: {
+            success: true,
+            message: previousHtml
+              ? `Updated “${app.name}”.`
+              : `“${app.name}” is ready. Review the preview, then publish it.`,
+            app,
+          },
+        });
       } catch (error) {
-        controller.enqueue(encode({
+        send({
           type: "result",
           result: {
             success: false,
-            changes: [],
             error: error instanceof Error ? error.message : "Build failed.",
           },
-        }));
+        });
       } finally {
+        closed = true;
         controller.close();
       }
     },
@@ -44,8 +94,11 @@ export async function POST(request: Request) {
   return new Response(stream, { headers: streamHeaders() });
 }
 
-function streamResult(result: Extract<BuildStreamEvent, { type: "result" }>["result"], status: number) {
-  return new Response(encode({ type: "result", result }), { status, headers: streamHeaders() });
+function immediate(result: GenerateResult, status: number) {
+  return new Response(encode({ type: "result", result }), {
+    status,
+    headers: streamHeaders(),
+  });
 }
 
 function streamHeaders() {

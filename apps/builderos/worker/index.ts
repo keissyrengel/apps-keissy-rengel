@@ -1,25 +1,17 @@
-/** Cloudflare Worker entry point for the vinext-starter template. */
-import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
+/** Cloudflare Worker entry point for BuilderOS. */
 import handler from "vinext/server/app-router-entry";
-import type { Sandbox as SandboxDurableObject } from "@cloudflare/sandbox";
-import { configureRemoteRuntime } from "../lib/runtime/remote-runtime";
-
-export { Sandbox } from "@cloudflare/sandbox";
-export { RemoteRuntime } from "../lib/runtime/remote-runtime";
 
 interface Env {
   ASSETS: Fetcher;
-  Sandbox: DurableObjectNamespace<SandboxDurableObject>;
-  BUILDER_RUNTIME: "remote";
-  SANDBOX_TRANSPORT: "rpc";
-  DB: D1Database;
-  IMAGES: {
-    input(stream: ReadableStream): {
-      transform(options: Record<string, unknown>): {
-        output(options: { format: string; quality: number }): Promise<{ response(): Response }>;
-      };
-    };
-  };
+  OPENAI_API_KEY?: string;
+  OPENAI_MODEL?: string;
+  GITHUB_TOKEN?: string;
+  GITHUB_OWNER?: string;
+  GITHUB_REPO?: string;
+  GITHUB_BRANCH?: string;
+  PUBLISH_DIRECTORY?: string;
+  PUBLIC_BASE_URL?: string;
+  BUILDER_ACCESS_CODE?: string;
 }
 
 interface ExecutionContext {
@@ -27,28 +19,8 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
-// Image security config. SVG sources with .svg extension auto-skip the
-// optimization endpoint on the client side (served directly, no proxy).
-// To route SVGs through the optimizer (with security headers), set
-// dangerouslyAllowSVG: true in next.config.js and uncomment below:
-// const imageConfig: ImageConfig = { dangerouslyAllowSVG: true };
-
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    configureRemoteRuntime({ Sandbox: env.Sandbox });
-    const url = new URL(request.url);
-
-    if (url.pathname === "/_vinext/image") {
-      const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
-      return handleImageOptimization(request, {
-        fetchAsset: (path) => env.ASSETS.fetch(new Request(new URL(path, request.url))),
-        transformImage: async (body, { width, format, quality }) => {
-          const result = await env.IMAGES.input(body).transform(width > 0 ? { width } : {}).output({ format, quality });
-          return result.response();
-        },
-      }, allowedWidths);
-    }
-
     return handler.fetch(request, env, ctx);
   },
 };

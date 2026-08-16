@@ -1,43 +1,33 @@
-export type AppKind = "crm" | "ecommerce" | "booking" | "dashboard" | "landing";
+export type BuilderStatus =
+  | "Planning"
+  | "Writing code"
+  | "Rendering preview"
+  | "Preview ready"
+  | "Publishing"
+  | "Published";
 
-export type ChangeAction = "created" | "modified" | "deleted";
-
-export interface FileChange {
-  path: string;
-  action: ChangeAction;
-}
-
-export interface ProjectState {
-  kind: AppKind;
+export interface GeneratedApp {
+  /** Human readable name, taken from the document <title>. */
   name: string;
-  prompt: string;
-  pages: Array<{ label: string; href: string }>;
-  sidebarWidth?: "default" | "narrow";
-}
-
-export interface GeneratedFile {
-  path: string;
-  content: string;
+  /** URL-safe folder name used when publishing to GitHub Pages. */
+  slug: string;
+  /** Complete, self-contained HTML document. */
+  html: string;
 }
 
 export interface GenerateResult {
   success: boolean;
-  changes: FileChange[];
   error?: string;
   message?: string;
-  previewUrl?: string;
-  state?: ProjectState;
+  app?: GeneratedApp;
 }
 
-export type BuilderStatus =
-  | "Planning"
-  | "Reading files"
-  | "Creating files"
-  | "Editing"
-  | "Running commands"
-  | "Testing"
-  | "Building"
-  | "Preview ready";
+export interface PublishResult {
+  success: boolean;
+  error?: string;
+  url?: string;
+  commitUrl?: string;
+}
 
 export type BuildStreamEvent =
   | { type: "status"; status: BuilderStatus; detail?: string }

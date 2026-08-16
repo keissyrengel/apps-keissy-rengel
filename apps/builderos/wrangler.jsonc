@@ -4,36 +4,18 @@
   "main": "./worker/index.ts",
   "compatibility_date": "2026-05-22",
   "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  // Non-secret configuration. Secrets (OPENAI_API_KEY, GITHUB_TOKEN,
+  // BUILDER_ACCESS_CODE) are set with `npx wrangler secret put <NAME>` and must
+  // never be added here.
   "vars": {
-    "BUILDER_RUNTIME": "remote",
-    "SANDBOX_TRANSPORT": "rpc",
-    "CLOUDFLARE_ACCOUNT_ID": "b25ab5b236b708b798698527167947c4",
-    "CLOUDFLARE_TUNNEL_ACCOUNT_ID": "b25ab5b236b708b798698527167947c4",
-    "CLOUDFLARE_ZONE_ID": "1129467082c9d9259bdfc881f72322e3"
-  },
-  "dev": {
-    "enable_containers": false
-  },
-  "containers": [
-    {
-      "class_name": "Sandbox",
-      "image": "./Dockerfile",
-      "instance_type": "standard-1",
-      "max_instances": 1
-    }
-  ],
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "Sandbox",
-        "class_name": "Sandbox"
-      }
-    ]
-  },
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_sqlite_classes": ["Sandbox"]
-    }
-  ]
+    "OPENAI_MODEL": "gpt-5.6-terra",
+    "GITHUB_OWNER": "keissyrengel",
+    "GITHUB_REPO": "apps-keissy-rengel",
+    "GITHUB_BRANCH": "main",
+    "PUBLISH_DIRECTORY": "apps",
+    "PUBLIC_BASE_URL": "https://apps.keissyrengel.com"
+  }
 }

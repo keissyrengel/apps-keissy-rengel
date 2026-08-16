@@ -1,96 +1,118 @@
 # BuilderOS
 
-BuilderOS converts a prompt into real code changes inside an independent Next.js application. During local development, the BuilderOS workspace runs on port `3000`, the generated application runs on port `3001`, and Codex App Server performs changes through a persistent local thread.
+Describe an app in plain language, see it running in the preview, and publish it to
+GitHub Pages with one click.
 
-The project is portable and can live at the repository root or inside a monorepo at `apps/builderos`. Internal project paths are resolved from BuilderOS's own `package.json`, not from the monorepo root or an absolute machine path.
+BuilderOS is a single Cloudflare Worker. It calls the OpenAI API to write a complete,
+self-contained HTML application, renders it in a sandboxed iframe, and — when you press
+Publish — commits it to `apps/<slug>/index.html` in this repository, where GitHub Pages
+serves it at `https://apps.keissyrengel.com/apps/<slug>/`.
 
-## Installation
+No containers, no tunnels, no Docker, no database. Local development and production run
+exactly the same code path.
 
-Requirements:
+## How it works
+
+```text
+prompt ──▶ /api/build ──▶ OpenAI ──▶ one self-contained HTML document
+                                        │
+                                        ├─▶ <iframe srcdoc> preview (sandboxed)
+                                        │
+        Publish ──▶ /api/publish ──▶ GitHub Contents API ──▶ commit to main
+                                        │
+                                        └─▶ GitHub Pages serves the live app
+```
+
+Follow-up prompts send the current document back to the model, so you can iterate on an
+app instead of regenerating it from scratch.
+
+## Requirements
 
 - Node.js `>=22.13.0`
-- npm
-- Codex CLI installed and authenticated locally when using the Codex engine
-
-From the BuilderOS directory:
-
-```bash
-npm install
-npm --prefix ./generated-app install
-```
+- An OpenAI API key
+- A GitHub fine-grained token with **Contents: read and write** on this repository
 
 ## Local development
 
 ```bash
-npm run dev
+npm install
+cp .env.example .env.local   # then fill in OPENAI_API_KEY and GITHUB_TOKEN
+npm run dev                  # open the URL Vite prints
 ```
 
-This starts:
-
-- BuilderOS: `http://localhost:3000`
-- generated-app: `http://localhost:3001`
-- Codex App Server: a child process managed by the BuilderOS backend over stdin/stdout
-
-Useful validation commands:
+Validation:
 
 ```bash
-npm run lint
-npm run typecheck
-npm run build
-npm run build:generated
+npm run check    # lint + typecheck + tests
 ```
 
-## Environment variables
+## Configuration
 
-Copy `.env.example` to `.env.local` when overrides are needed. Do not commit `.env.local` or secrets.
+Secrets — set with `npx wrangler secret put <NAME>`, never in `wrangler.jsonc`:
 
-| Variable | Default | Purpose |
+| Secret | Required | Purpose |
 | --- | --- | --- |
-| `BUILDER_RUNTIME` | `local` in development, `remote` in production | Selects the local filesystem/Codex runtime or the future Cloudflare runtime. The remote runtime is currently a controlled stub. |
-| `BUILDER_ENGINE` | `codex` | Use `codex` for Codex App Server or `local` for the template fallback. |
-| `CODEX_MODEL` | Codex configuration | Optional model override. Usually left unset. |
+| `OPENAI_API_KEY` | yes | Generates the apps. |
+| `GITHUB_TOKEN` | to publish | Commits the app to the repository. |
+| `BUILDER_ACCESS_CODE` | strongly recommended | Shared code required by `/api/build` and `/api/publish`. Without it, anyone who finds the URL can spend your OpenAI credit. |
 
-Codex authentication remains in the developer's local Codex configuration and is never exposed to the browser.
+Non-secret vars live in `wrangler.jsonc`:
 
-## Local architecture
+| Var | Default | Purpose |
+| --- | --- | --- |
+| `OPENAI_MODEL` | `gpt-5.6-terra` | Any chat-completions capable model id. |
+| `GITHUB_OWNER` | `keissyrengel` | Repository owner. |
+| `GITHUB_REPO` | `apps-keissy-rengel` | Repository name. |
+| `GITHUB_BRANCH` | `main` | Branch that GitHub Pages serves. |
+| `PUBLISH_DIRECTORY` | `apps` | Folder published apps are committed into. |
+| `PUBLIC_BASE_URL` | `https://apps.keissyrengel.com` | Used to build the live URL shown after publishing. |
+
+## Deployment
+
+First time only:
+
+```bash
+npx wrangler login
+npx wrangler secret put OPENAI_API_KEY
+npx wrangler secret put GITHUB_TOKEN
+npx wrangler secret put BUILDER_ACCESS_CODE
+```
+
+Then either deploy by hand:
+
+```bash
+npm run deploy
+```
+
+…or let CI do it. `.github/workflows/deploy-builderos.yml` deploys on every push to
+`main` that touches `apps/builderos/`. It needs two repository secrets:
+
+- `CLOUDFLARE_API_TOKEN` — an *Edit Cloudflare Workers* token
+- `CLOUDFLARE_ACCOUNT_ID`
+
+`npm run deploy:dry-run` validates the build and the Worker configuration without
+uploading anything.
+
+## Project layout
 
 ```text
 apps/builderos/
-├── app/                 BuilderOS application
-├── components/          BuilderOS UI
+├── app/
+│   ├── api/build/       Prompt → OpenAI → HTML document (ndjson status stream)
+│   ├── api/publish/     HTML document → GitHub commit → live URL
+│   └── page.tsx         Server component; decides whether the access gate is on
+├── components/builder/  Workspace UI
 ├── lib/
-│   ├── builder/         Local fallback generator and project manager
-│   ├── codex/           App Server client, thread manager and event mapping
-│   └── runtime/         Local/remote runtime boundary and selection
-├── build/               Local API middleware and Cloudflare build helpers
-└── generated-app/       Independent Next.js application edited by Codex
+│   ├── ai/              OpenAI client, HTML extraction, slugs
+│   ├── github/          Contents API publisher
+│   ├── builder/types.ts Shared types
+│   └── env.ts           Config and the access gate
+├── worker/index.ts      Cloudflare Worker entry point
+└── tests/               Unit tests plus a server-render smoke test
 ```
 
-The request flow is:
+## Security notes
 
-```text
-prompt → BuilderOS backend → Codex App Server → generated-app files
-       → Next.js hot reload on :3001 → iframe preview → Changes panel
-```
-
-One in-memory Codex thread is associated with `generated-app` for the current BuilderOS process. The App Server process is reused between prompts and is shut down gracefully with the development server.
-
-`BUILDER_RUNTIME=local` preserves this complete local pipeline. `BUILDER_RUNTIME=remote` routes builds to `lib/runtime/remote-runtime.ts`, obtains the fixed test sandbox `builderos-test` over RPC, and runs `node --version` as a connectivity check. It does not generate code or use the prompt as a command.
-
-The remote runtime requires the `Sandbox` Durable Object binding, its SQLite migration, the Sandbox container declared in `wrangler.jsonc`, and `SANDBOX_TRANSPORT=rpc`. Deploying the Worker and container requires Cloudflare Containers/Sandbox access and Docker in the deployment environment.
-
-## Monorepo placement
-
-Move this entire directory to `apps/builderos` without separating `generated-app`. Run commands from the BuilderOS workspace or through the monorepo's workspace runner. Keep the root `package.json`, lockfile, `.openai`, `.env.example`, and `generated-app` together.
-
-No root-relative monorepo paths or machine-specific absolute paths are required.
-
-## Deployment architecture
-
-The intended production architecture is:
-
-- BuilderOS will be deployed on Cloudflare.
-- Generated projects will execute in isolated Cloudflare Sandbox/Containers rather than inside the BuilderOS web process.
-- GitHub will be the source of truth for generated project code and its history.
-
-Cloudflare Sandbox/Containers, GitHub synchronization and deployment orchestration are intentionally not implemented in this phase.
+- Generated apps run in an iframe with `sandbox="allow-scripts allow-forms allow-modals allow-popups"`, so they cannot reach BuilderOS's own origin.
+- `BUILDER_ACCESS_CODE` is the only thing standing between a public URL and your OpenAI bill. Set it.
+- The GitHub token can write to this repository. Use a fine-grained token scoped to this repository only.
