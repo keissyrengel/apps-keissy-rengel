@@ -6,7 +6,7 @@
   <title>Service Delivery OS</title>
   <style>
     :root{--ink:#1b072e;--ink2:#351550;--lime:#e0fb31;--bg:#f7f5f8;--card:#fff;--line:#e8e1eb;--muted:#746b7c;--text:#251a2d;--green:#20825e;--amber:#a65f05;--red:#bd3c55;--radius:15px;--shadow:0 12px 30px rgba(27,7,46,.09)}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);font:14px Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}button,input,select,textarea{font:inherit}button{cursor:pointer}button:focus-visible,input:focus,select:focus,textarea:focus{outline:3px solid rgba(78,46,104,.2);outline-offset:2px} .app{min-height:100vh;display:grid;grid-template-columns:250px 1fr}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);font:14px Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}button,input,select,textarea{font:inherit}button{cursor:pointer}button:focus-visible,input:focus,select:focus,textarea:focus{outline:3px solid rgba(78,46,104,.2);outline-offset:2px}.app{min-height:100vh;display:grid;grid-template-columns:250px 1fr}
     .sidebar{background:var(--ink);color:#fff;padding:20px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:10}.brand{display:flex;align-items:center;gap:11px;padding:0 9px 25px;border-bottom:1px solid rgba(255,255,255,.13)}.brand-mark{width:38px;height:38px;border-radius:11px;background:var(--lime);color:var(--ink);display:grid;place-items:center;font-weight:900;font-size:18px}.brand-name{font-weight:800;letter-spacing:-.3px}.brand-name span{display:block;color:#c9bad5;font-size:11px;font-weight:500;margin-top:2px}
     nav{padding-top:18px;display:grid;gap:5px}.nav-item{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:9px;color:#d7cbdf;border:0;background:transparent;text-align:left;width:100%;font-weight:700}.nav-item:hover,.nav-item.active{background:rgba(224,251,49,.13);color:var(--lime)}.sidebar-bottom{margin-top:auto;border-top:1px solid rgba(255,255,255,.13);padding:16px 7px 3px}.user{display:flex;align-items:center;gap:9px}.avatar{width:32px;height:32px;border-radius:50%;background:var(--lime);color:var(--ink);display:grid;place-items:center;font-size:12px;font-weight:800}.user small{color:#bcaec7;display:block}
     .topbar{height:74px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 34px;position:sticky;top:0;z-index:5}.crumb{color:var(--muted);font-size:13px}.crumb strong{color:var(--text)}.top-actions{display:flex;gap:10px;align-items:center}.content{padding:31px 34px;max-width:1560px;margin:auto}.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:25px}.page-head h1{font-size:27px;letter-spacing:-.9px;margin:0 0 7px}.page-head p{margin:0;color:var(--muted)}
@@ -36,7 +36,7 @@
       <button class="nav-item" data-view="team">♟ Equipo</button>
       <button class="nav-item" data-view="settings">⚙ Configuración</button>
     </nav>
-    <div class="sidebar-bottom"><div class="user"><div class="avatar">KM</div><div><b>Keissy Martínez</b><small>Owner</small></div></div></div>
+    <div class="sidebar-bottom"><div class="user"><div class="avatar">KR</div><div><b>Keissy Rengel</b><small>Owner</small></div></div></div>
   </aside>
   <main>
     <header class="topbar">
@@ -76,11 +76,11 @@
         <div class="service-grid" id="servicesGrid"></div>
       </section>
 
-      <section id="teamView" class="view hidden"><div class="page-head"><div><h1>Equipo</h1><p>Gestiona usuarios, roles técnicos y acceso operativo.</p></div><button class="btn btn-primary" onclick="showToast('Invitación preparada para enviar')">+ Invitar usuario</button></div><div class="panel"><div class="panel-body"><b>Keissy Martínez</b><p style="color:var(--muted)">Owner · keissy@konvertis.agency</p></div></div></section>
+      <section id="teamView" class="view hidden"><div class="page-head"><div><h1>Equipo</h1><p>Gestiona usuarios, roles técnicos y acceso operativo.</p></div><button class="btn btn-primary" onclick="showToast('Invitación preparada para enviar')">+ Invitar usuario</button></div><div class="panel"><div class="panel-body"><b>Keissy Rengel</b><p style="color:var(--muted)">Owner · keissy@konvertis.agency</p></div></div></section>
       <section id="settingsView" class="view hidden"><div class="page-head"><div><h1>Configuración</h1><p>Preferencias generales de la organización.</p></div><button class="btn btn-primary" onclick="showToast('Configuración guardada')">Guardar cambios</button></div><div class="panel" style="max-width:720px"><div class="panel-body"><div class="field"><label>Nombre de organización</label><input value="Konvertis Agency"></div><div class="field"><label>Zona horaria</label><select><option>America/Santo_Domingo (AST)</option></select></div></div></div></section>
 
       <section id="workspaceView" class="view hidden">
-        <div class="workspace-head"><span class="badge active" style="background:rgba(224,251,49,.13);color:var(--lime)">Activo</span><h1 id="workspaceTitle"></h1><p id="workspaceClient"></p><div class="workspace-kpis"><div class="workspace-kpi"><span>Owner</span><b>Keissy Martínez</b></div><div class="workspace-kpi"><span>Progreso</span><b class="lime-text" id="workspaceProgress">43%</b></div><div class="workspace-kpi"><span>Fase actual</span><b>01 — Diagnóstico</b></div></div></div>
+        <div class="workspace-head"><span class="badge active" style="background:rgba(224,251,49,.13);color:var(--lime)">Activo</span><h1 id="workspaceTitle"></h1><p id="workspaceClient"></p><div class="workspace-kpis"><div class="workspace-kpi"><span>Owner</span><b>Keissy Rengel</b></div><div class="workspace-kpi"><span>Progreso</span><b class="lime-text" id="workspaceProgress">43%</b></div><div class="workspace-kpi"><span>Fase actual</span><b>01 — Diagnóstico</b></div></div></div>
         <div class="tabs"><button class="tab active">01 · Diagnóstico</button><button class="tab">Mapa</button><button class="tab">Timeline</button></div>
         <div class="phase-layout"><aside class="panel phase-summary"><div class="phase-no">01 — FASE ACTUAL</div><h2>Síntesis y diagnóstico</h2><p>Convierte la información inicial del cliente en un diagnóstico accionable.</p><div class="circle-progress"><div id="phasePercent">60%</div></div></aside>
           <section class="panel phase-detail"><div class="goal"><span>Objetivo de la fase</span><p>Entender el estado actual del negocio, detectar oportunidades y documentar los hallazgos que orientarán la estrategia.</p></div><div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><b id="taskProgressLabel"></b><div style="font-size:12px;color:var(--muted);margin-top:4px">Las tareas requeridas determinan el progreso.</div></div></div><div id="taskList"></div></section>
@@ -103,7 +103,7 @@
   </main>
 </div>
 
-<div class="modal-backdrop" id="projectModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="projectModalTitle"><div class="modal-head"><h2 id="projectModalTitle">Crear nuevo proyecto</h2><button class="close" aria-label="Cerrar" onclick="closeModal('projectModal')">×</button></div><div class="modal-body"><p style="margin-top:0;color:var(--muted)">Se creará un snapshot independiente del Service Template seleccionado.</p><div class="form-grid"><div class="field"><label for="newProjectClient">Cliente</label><select id="newProjectClient"></select></div><div class="field"><label for="newProjectService">Service Template</label><select id="newProjectService"></select></div><div class="field full"><label for="newProjectName">Nombre del proyecto</label><input id="newProjectName" placeholder="Se generará a partir de cliente y servicio"></div><div class="field"><label>Project Owner</label><select><option>Keissy Martínez</option><option>Laura Méndez</option></select></div><div class="field"><label>Fecha de inicio</label><input type="date" value="2026-08-18"></div></div></div><div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('projectModal')">Cancelar</button><button class="btn btn-primary" onclick="createProject()">Crear proyecto y snapshot</button></div></div></div>
+<div class="modal-backdrop" id="projectModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="projectModalTitle"><div class="modal-head"><h2 id="projectModalTitle">Crear nuevo proyecto</h2><button class="close" aria-label="Cerrar" onclick="closeModal('projectModal')">×</button></div><div class="modal-body"><p style="margin-top:0;color:var(--muted)">Se creará un snapshot independiente del Service Template seleccionado.</p><div class="form-grid"><div class="field"><label for="newProjectClient">Cliente</label><select id="newProjectClient"></select></div><div class="field"><label for="newProjectService">Service Template</label><select id="newProjectService"></select></div><div class="field full"><label for="newProjectName">Nombre del proyecto</label><input id="newProjectName" placeholder="Se generará a partir de cliente y servicio"></div><div class="field"><label>Project Owner</label><select><option>Keissy Rengel</option><option>Laura Méndez</option></select></div><div class="field"><label>Fecha de inicio</label><input type="date" value="2026-08-18"></div></div></div><div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('projectModal')">Cancelar</button><button class="btn btn-primary" onclick="createProject()">Crear proyecto y snapshot</button></div></div></div>
 
 <div class="modal-backdrop" id="clientModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="clientModalTitle"><div class="modal-head"><h2 id="clientModalTitle">Nuevo cliente</h2><button class="close" aria-label="Cerrar" onclick="closeModal('clientModal')">×</button></div><div class="modal-body"><div class="form-grid"><div class="field"><label for="newClientName">Nombre del cliente *</label><input id="newClientName" placeholder="Ej. Estudio Horizon"></div><div class="field"><label for="newClientCompany">Empresa</label><input id="newClientCompany" placeholder="Nombre legal o comercial"></div><div class="field"><label for="newClientIndustry">Industria</label><input id="newClientIndustry" placeholder="Ej. Salud"></div><div class="field"><label for="newClientCountry">País</label><input id="newClientCountry" placeholder="Ej. República Dominicana"></div><div class="field"><label for="newClientContact">Contacto principal</label><input id="newClientContact" placeholder="Nombre del contacto"></div><div class="field"><label>Email principal</label><input type="email" placeholder="contacto@empresa.com"></div></div></div><div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('clientModal')">Cancelar</button><button class="btn btn-primary" onclick="createClient()">Guardar cliente</button></div></div></div>
 <div class="toast" id="toast"></div>
@@ -147,22 +147,22 @@ function initials(name){return name.split(" ").map(x=>x[0]).join("").slice(0,2).
 function renderDashboard(){
   activeProjectsCount.textContent=projects.filter(p=>p.status==="Active").length;
   activeClientsCount.textContent=clients.filter(c=>c.status==="Activo").length;
-  recentProjects.innerHTML=projects.length?projects.slice(0,4).map(p=>`<div class="project-row" onclick="openWorkspace(${JSON.stringify(p.name)})"><div><div class="project-title">${esc(p.name)}</div><div class="project-meta">${esc(p.service)} · Owner: ${esc(p.owner)}</div></div><div><div class="progress-bar"><span style="width:${p.progress}%"></span></div></div><div class="progress-number">${p.progress}%</div><div><span class="badge ${statusClass(p.status)}">${statusText(p.status)}</span></div></div>`).join(""):`<p style="color:var(--muted)">Aún no hay proyectos. Crea el primero para comenzar.</p>`;
+  recentProjects.innerHTML=projects.length?projects.slice(0,4).map(p=>`<div class="project-row" role="button" tabindex="0" data-action="open-workspace" data-project="${esc(p.name)}"><div><div class="project-title">${esc(p.name)}</div><div class="project-meta">${esc(p.service)} · Owner: ${esc(p.owner)}</div></div><div><div class="progress-bar"><span style="width:${p.progress}%"></span></div></div><div class="progress-number">${p.progress}%</div><div><span class="badge ${statusClass(p.status)}">${statusText(p.status)}</span></div></div>`).join(""):`<p style="color:var(--muted)">Aún no hay proyectos. Crea el primero para comenzar.</p>`;
 }
 function renderProjects(){
   const q=(projectSearch?.value||"").toLowerCase(),st=statusFilter?.value||"";
   const list=projects.filter(p=>(p.name+p.client).toLowerCase().includes(q)&&(!st||p.status===st));
-  projectsTable.innerHTML=list.length?list.map(p=>`<tr onclick="openWorkspace(${JSON.stringify(p.name)})" style="cursor:pointer"><td><div class="client-cell"><div class="client-logo">${initials(p.client)}</div><div><b>${esc(p.name)}</b><div class="project-meta">${esc(p.client)}</div></div></div></td><td>${esc(p.service)}</td><td>${esc(p.phase)}</td><td>${esc(p.owner)}</td><td><div style="display:flex;gap:8px;align-items:center;min-width:110px"><div class="progress-bar"><span style="width:${p.progress}%"></span></div><b style="font-size:12px">${p.progress}%</b></div></td><td>${esc(p.due)}</td><td><span class="badge ${statusClass(p.status)}">${statusText(p.status)}</span></td></tr>`).join(""):`<tr class="no-hover"><td colspan="7" style="text-align:center;color:var(--muted);padding:28px">No se encontraron proyectos.</td></tr>`;
+  projectsTable.innerHTML=list.length?list.map(p=>`<tr data-action="open-workspace" data-project="${esc(p.name)}" style="cursor:pointer"><td><div class="client-cell"><div class="client-logo">${initials(p.client)}</div><div><b>${esc(p.name)}</b><div class="project-meta">${esc(p.client)}</div></div></div></td><td>${esc(p.service)}</td><td>${esc(p.phase)}</td><td>${esc(p.owner)}</td><td><div style="display:flex;gap:8px;align-items:center;min-width:110px"><div class="progress-bar"><span style="width:${p.progress}%"></span></div><b style="font-size:12px">${p.progress}%</b></div></td><td>${esc(p.due)}</td><td><span class="badge ${statusClass(p.status)}">${statusText(p.status)}</span></td></tr>`).join(""):`<tr class="no-hover"><td colspan="7" style="text-align:center;color:var(--muted);padding:28px">No se encontraron proyectos.</td></tr>`;
 }
 function renderClients(list=clients){
-  clientsTable.innerHTML=list.length?list.map(c=>`<tr><td><div class="client-cell"><div class="client-logo">${initials(c.name)}</div><div><b>${esc(c.name)}</b><div class="project-meta">${esc(c.company)}</div></div></div></td><td>${esc(c.industry)}</td><td>${esc(c.country)}</td><td>${c.projects}</td><td>${esc(c.contact)}</td><td><span class="badge active">${esc(c.status)}</span></td><td><div class="client-actions"><button class="btn btn-danger btn-sm" onclick="deleteClient(${JSON.stringify(c.id)})">Eliminar</button></div></td></tr>`).join(""):`<tr class="no-hover"><td colspan="7" style="text-align:center;color:var(--muted);padding:28px">No hay clientes. Crea uno para comenzar.</td></tr>`;
+  clientsTable.innerHTML=list.length?list.map(c=>`<tr><td><div class="client-cell"><div class="client-logo">${initials(c.name)}</div><div><b>${esc(c.name)}</b><div class="project-meta">${esc(c.company)}</div></div></div></td><td>${esc(c.industry)}</td><td>${esc(c.country)}</td><td>${c.projects}</td><td>${esc(c.contact)}</td><td><span class="badge active">${esc(c.status)}</span></td><td><div class="client-actions"><button class="btn btn-danger btn-sm" type="button" data-action="delete-client" data-client-id="${esc(c.id)}">Eliminar</button></div></td></tr>`).join(""):`<tr class="no-hover"><td colspan="7" style="text-align:center;color:var(--muted);padding:28px">No hay clientes. Crea uno para comenzar.</td></tr>`;
 }
 function filterClients(q){renderClients(clients.filter(c=>(c.name+c.company+c.contact).toLowerCase().includes(q.toLowerCase())))}
 function renderServices(){
-  servicesGrid.innerHTML=services.map(s=>`<article class="service-card"><div class="service-icon">${s.icon}</div><span class="badge ${s.status==="Activo"?"active":"draft"}" style="position:absolute;right:18px;top:18px">${s.status}</span><h2>${esc(s.name)}</h2><p>${esc(s.description)}</p><div class="service-info"><div><b>${s.phases}</b>Fases</div><div><b>${s.tasks}</b>Tareas</div><div><b>${s.projects}</b>Proyectos activos</div></div><div class="service-foot"><span style="font-size:12px;color:var(--muted)">◷ ${s.duration}</span><button class="btn btn-outline btn-sm" onclick="openServiceBuilder(${JSON.stringify(s.name)})">Abrir →</button></div></article>`).join("");
+  servicesGrid.innerHTML=services.map(s=>`<article class="service-card"><div class="service-icon">${s.icon}</div><span class="badge ${s.status==="Activo"?"active":"draft"}" style="position:absolute;right:18px;top:18px">${s.status}</span><h2>${esc(s.name)}</h2><p>${esc(s.description)}</p><div class="service-info"><div><b>${s.phases}</b>Fases</div><div><b>${s.tasks}</b>Tareas</div><div><b>${s.projects}</b>Proyectos activos</div></div><div class="service-foot"><span style="font-size:12px;color:var(--muted)">◷ ${s.duration}</span><button class="btn btn-outline btn-sm" type="button" data-action="open-service" data-service="${esc(s.name)}">Abrir →</button></div></article>`).join("");
 }
 function renderTasks(){
-  taskList.innerHTML=tasks.map((t,i)=>`<article class="task-card ${t.status==="Completed"?"completed":""}"><div class="task-top"><button class="task-check" aria-label="Cambiar estado de ${esc(t.name)}" onclick="toggleTask(${i})"></button><div><h3>${esc(t.name)}</h3><p>${esc(t.desc)}</p></div><span class="badge ${statusClass(t.status)}">${statusText(t.status)}</span></div><div class="task-body"><div><div class="task-label">HERRAMIENTA</div><div class="task-value"><span class="tool-dot"></span>${esc(t.tool)}</div></div><div><div class="task-label">OUTPUT ESPERADO</div><div class="task-value">${esc(t.output)}</div></div><div style="align-self:center"><button class="btn btn-primary btn-sm" onclick="openTaskTool(${i})">${t.toolType==="none"?"Registrar output":t.toolType==="prompt"?"Copiar prompt":"Abrir herramienta"}</button></div></div></article>`).join("");
+  taskList.innerHTML=tasks.map((t,i)=>`<article class="task-card ${t.status==="Completed"?"completed":""}"><div class="task-top"><button class="task-check" type="button" aria-label="Cambiar estado de ${esc(t.name)}" data-action="toggle-task" data-task-index="${i}"></button><div><h3>${esc(t.name)}</h3><p>${esc(t.desc)}</p></div><span class="badge ${statusClass(t.status)}">${statusText(t.status)}</span></div><div class="task-body"><div><div class="task-label">HERRAMIENTA</div><div class="task-value"><span class="tool-dot"></span>${esc(t.tool)}</div></div><div><div class="task-label">OUTPUT ESPERADO</div><div class="task-value">${esc(t.output)}</div></div><div style="align-self:center"><button class="btn btn-primary btn-sm" type="button" data-action="open-task-tool" data-task-index="${i}">${t.toolType==="none"?"Registrar output":t.toolType==="prompt"?"Copiar prompt":"Abrir herramienta"}</button></div></div></article>`).join("");
   updateTaskProgress();
 }
 function updateTaskProgress(){
@@ -200,7 +200,12 @@ function deleteClient(id){
   const linked=projects.filter(p=>p.client===client.name);
   const msg=linked.length?`El cliente “${client.name}” tiene ${linked.length} proyecto(s). Al eliminarlo, los proyectos permanecerán sin borrar.`:`¿Eliminar a “${client.name}”?`;
   if(!confirm(msg))return;
-  clients=clients.filter(c=>c.id!==id);store("clients",clients);renderClients();renderDashboard();refreshProjectClientOptions();showToast("Cliente <b>eliminado</b> correctamente.");
+  clients=clients.filter(c=>c.id!==id);
+  store("clients",clients);
+  renderClients();
+  renderDashboard();
+  refreshProjectClientOptions();
+  showToast("Cliente <b>eliminado</b> correctamente.");
 }
 function navigate(view){
   document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));document.getElementById(view+"View").classList.remove("hidden");
@@ -219,8 +224,8 @@ function openServiceBuilder(name){
   builderServiceName.textContent=name||"Nuevo Service Template";crumb.innerHTML=`Servicios / <strong>${name||"Nuevo servicio"}</strong>`;changeToolConfig();window.scrollTo(0,0);
 }
 let templateColumns=["Segmento","Problemas","Objetivos"],templateRows=[
-  ["Cliente ideal","", ""],
-  ["Necesidades principales","", ""]
+  ["Cliente ideal","",""],
+  ["Necesidades principales","",""]
 ];
 function renderTemplateGrid(){
   const thead=`<tr>${templateColumns.map((c,i)=>`<th><input aria-label="Nombre de columna ${i+1}" value="${esc(c)}" oninput="updateTemplateColumn(${i},this.value)"></th>`).join("")}<th class="row-control"><button class="icon-button" title="Añadir columna" aria-label="Añadir columna" onclick="addTemplateColumn()">＋</button></th></tr>`;
@@ -261,6 +266,42 @@ function createProject(){
   closeModal("projectModal");newProjectName.value="";renderProjects();renderDashboard();renderClients();showToast("Proyecto y <b>snapshot creados</b>.");openWorkspace(name);
 }
 function showToast(msg){const t=document.getElementById("toast");t.innerHTML=msg;t.classList.add("show");clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>t.classList.remove("show"),3100)}
+
+document.addEventListener("click",function(e){
+  const target=e.target.closest("[data-action]");
+  if(!target)return;
+  const action=target.dataset.action;
+  if(action==="open-workspace"){
+    e.preventDefault();
+    openWorkspace(target.dataset.project);
+  }
+  if(action==="delete-client"){
+    e.preventDefault();
+    e.stopPropagation();
+    deleteClient(target.dataset.clientId);
+  }
+  if(action==="open-service"){
+    e.preventDefault();
+    e.stopPropagation();
+    openServiceBuilder(target.dataset.service);
+  }
+  if(action==="toggle-task"){
+    e.preventDefault();
+    toggleTask(Number(target.dataset.taskIndex));
+  }
+  if(action==="open-task-tool"){
+    e.preventDefault();
+    openTaskTool(Number(target.dataset.taskIndex));
+  }
+});
+document.addEventListener("keydown",function(e){
+  if(e.key!=="Enter"&&e.key!==" ")return;
+  const target=e.target.closest("[data-action='open-workspace']");
+  if(target){
+    e.preventDefault();
+    openWorkspace(target.dataset.project);
+  }
+});
 document.querySelectorAll(".modal-backdrop").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("open")}));
 renderDashboard();renderProjects();renderClients();renderServices();renderTasks();refreshProjectClientOptions();
 </script>
