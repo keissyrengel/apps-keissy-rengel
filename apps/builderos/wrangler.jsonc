@@ -7,9 +7,16 @@
   "observability": {
     "enabled": true
   },
-  // Non-secret configuration. Secrets (OPENAI_API_KEY, GITHUB_TOKEN,
-  // BUILDER_ACCESS_CODE) are set with `npx wrangler secret put <NAME>` and must
-  // never be added here.
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["Sandbox"]
+    },
+    {
+      "tag": "v2",
+      "deleted_classes": ["Sandbox"]
+    }
+  ],
   "vars": {
     "OPENAI_MODEL": "gpt-5.6-terra",
     "GITHUB_OWNER": "keissyrengel",
