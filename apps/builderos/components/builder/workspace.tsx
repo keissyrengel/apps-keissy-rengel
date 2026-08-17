@@ -25,6 +25,16 @@ import {
   WorkspacePanel,
 } from "@/components/builder/brand-ui";
 import { BrandPanel } from "@/components/builder/brand-panel";
+import { HistoryPanel } from "@/components/builder/history-panel";
+import {
+  type Draft,
+  deleteDraft,
+  getDraftsSnapshot,
+  getServerDraftsSnapshot,
+  newDraftId,
+  saveDraft,
+  subscribeDrafts,
+} from "@/lib/client/drafts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type {
@@ -34,6 +44,8 @@ import type {
   BuildStreamEvent,
   GeneratedApp,
   GenerateResult,
+  PublishedApp,
+  PublishMode,
   PublishResult,
 } from "@/lib/builder/types";
 
@@ -76,8 +88,15 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
   const [buildError, setBuildError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+  const [conflictSlug, setConflictSlug] = useState<string | null>(null);
+  const drafts = useSyncExternalStore(
+    subscribeDrafts,
+    getDraftsSnapshot,
+    getServerDraftsSnapshot,
+  );
   const buildId = useRef(0);
   const lastPrompt = useRef("");
+  const draftId = useRef(newDraftId());
 
   const isBuilding = status !== null && status !== "Preview ready" && status !== "Published";
   const hasPreview = app !== null;
@@ -154,6 +173,12 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
       }
 
       setApp(result.app);
+      saveDraft({
+        ...result.app,
+        id: draftId.current,
+        prompt: value,
+        updatedAt: Date.now(),
+      });
       setPreviewVersion((version) => version + 1);
       setStatus("Preview ready");
       setStatusDetail(null);
@@ -175,10 +200,11 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
     }
   }
 
-  async function handlePublish() {
+  async function handlePublish(mode?: PublishMode) {
     if (!app || publishing) return;
     setPublishing(true);
     setBuildError(null);
+    setConflictSlug(null);
     setStatus("Publishing");
     setStatusDetail(app.name);
 
@@ -186,12 +212,27 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
       const response = await fetch("/api/publish", {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({ slug: app.slug, html: app.html, prompt: lastPrompt.current }),
+        body: JSON.stringify({
+          slug: app.slug,
+          html: app.html,
+          prompt: lastPrompt.current,
+          mode,
+        }),
       });
       const result = (await response.json()) as PublishResult;
+
+      // The app already exists: ask before touching what is live.
+      if (result.conflict) {
+        setConflictSlug(result.slug ?? app.slug);
+        setStatus(null);
+        setStatusDetail(null);
+        return;
+      }
+
       if (!result.success || !result.url) {
         throw new Error(result.error || "Publish failed.");
       }
+      if (result.slug) setApp({ ...app, slug: result.slug });
       setPublishedUrl(result.url);
       setStatus("Published");
       setStatusDetail(null);
@@ -209,8 +250,53 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
     }
   }
 
+  async function loadPublished(): Promise<PublishedApp[]> {
+    const response = await fetch("/api/apps", { headers: authHeaders() });
+    const body = (await response.json()) as { apps?: PublishedApp[]; error?: string };
+    if (!response.ok) throw new Error(body.error ?? "No se pudo leer el repositorio.");
+    return body.apps ?? [];
+  }
+
+  function openApp(loaded: GeneratedApp, id: string, note: string) {
+    buildId.current += 1;
+    draftId.current = id;
+    setApp(loaded);
+    setPreviewVersion((version) => version + 1);
+    setMessages([{ id: Date.now(), role: "builder", text: note }]);
+    setBuildError(null);
+    setPublishedUrl(null);
+    setConflictSlug(null);
+    setStatus(null);
+    setStatusDetail(null);
+  }
+
+  function openDraft(draft: Draft) {
+    lastPrompt.current = draft.prompt;
+    openApp(
+      { name: draft.name, slug: draft.slug, html: draft.html },
+      draft.id,
+      `Retomando "${draft.name}". Describe el cambio que quieras.`,
+    );
+  }
+
+  async function openPublished(slug: string) {
+    const response = await fetch(`/api/apps/${encodeURIComponent(slug)}`, {
+      headers: authHeaders(),
+    });
+    const body = (await response.json()) as { app?: GeneratedApp; error?: string };
+    if (!response.ok || !body.app) throw new Error(body.error ?? "No se pudo abrir la app.");
+
+    lastPrompt.current = "";
+    openApp(
+      body.app,
+      newDraftId(),
+      `Abierta "${body.app.name}" desde tus apps publicadas. Describe el cambio que quieras.`,
+    );
+  }
+
   function resetWorkspace() {
     buildId.current += 1;
+    draftId.current = newDraftId();
     setPrompt("");
     setMessages([]);
     setBrand({});
@@ -220,6 +306,7 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
     setBuildError(null);
     setStatus(null);
     setStatusDetail(null);
+    setConflictSlug(null);
   }
 
   const activeStep = status ? BUILD_STEPS.indexOf(status as (typeof BUILD_STEPS)[number]) : -1;
@@ -336,7 +423,7 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
                   <p className="truncate text-[11px] font-bold text-ink">{app.name}</p>
                   <p className="truncate font-mono text-[9px] text-muted">/{app.slug}/</p>
                 </div>
-                <BuilderButton type="button" onClick={handlePublish} disabled={publishing || isBuilding}>
+                <BuilderButton type="button" onClick={() => void handlePublish()} disabled={publishing || isBuilding}>
                   {publishing ? "Publishing" : publishedUrl ? "Republish" : "Publish"}
                   {publishing ? (
                     <LoaderCircle className="size-3.5 animate-spin" />
@@ -345,6 +432,37 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
                   )}
                 </BuilderButton>
               </div>
+              {conflictSlug && (
+                <div className="space-y-2 border-t border-brand-border-subtle px-3 py-2.5">
+                  <p className="text-[11px] leading-4 text-copy">
+                    Ya existe una app publicada en{" "}
+                    <span className="font-mono text-ink">/{conflictSlug}/</span>. ¿Qué hago?
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handlePublish("update")}
+                      className="flex-1 rounded-lg border border-acid/40 bg-acid/10 px-2 py-1.5 text-[11px] font-bold text-acid transition hover:bg-acid/20"
+                    >
+                      Actualizar la existente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handlePublish("copy")}
+                      className="flex-1 rounded-lg border border-brand-border px-2 py-1.5 text-[11px] text-copy transition hover:border-electric/50 hover:text-ink"
+                    >
+                      Publicar una copia
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setConflictSlug(null)}
+                    className="text-[10px] text-muted underline-offset-2 hover:underline"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
               {publishedUrl && (
                 <a
                   href={publishedUrl}
@@ -360,6 +478,14 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
           )}
 
           <div className="shrink-0 p-3 sm:p-4">
+            <HistoryPanel
+              drafts={drafts}
+              onOpenDraft={openDraft}
+              onDeleteDraft={(id) => deleteDraft(id)}
+              onOpenPublished={openPublished}
+              loadPublished={loadPublished}
+              busy={isBuilding || publishing}
+            />
             <BrandPanel
               brand={brand}
               onBrandChange={setBrand}

@@ -1,12 +1,15 @@
 import type { BuilderConfig } from "../env";
-import type { PublishResult } from "../builder/types";
+import type { PublishedApp, PublishMode, PublishResult } from "../builder/types";
 
 const USER_AGENT = "BuilderOS";
+/** Bound on the `slug-2`, `slug-3`… search so a pathological repo cannot spin. */
+const MAX_COPY_SUFFIX = 50;
 
 interface PublishOptions {
   slug: string;
   html: string;
   prompt: string;
+  mode?: PublishMode;
   config: BuilderConfig;
 }
 
@@ -14,11 +17,15 @@ interface PublishOptions {
  * Commits the generated app to `<publishDirectory>/<slug>/index.html` on the
  * configured branch. GitHub Pages serves that path, so the app is live a few
  * seconds after the commit lands.
+ *
+ * Overwriting is never implicit: if the target exists and the caller did not
+ * say what to do, this reports a conflict and writes nothing.
  */
 export async function publishApp({
   slug,
   html,
   prompt,
+  mode,
   config,
 }: PublishOptions): Promise<PublishResult> {
   if (!config.githubToken) {
@@ -29,17 +36,28 @@ export async function publishApp({
     };
   }
 
-  const path = `${config.publishDirectory}/${slug}/index.html`;
-  const api = config.githubApiUrl.replace(/\/+$/, "");
-  const endpoint = `${api}/repos/${config.githubOwner}/${config.githubRepo}/contents/${path}`;
+  let targetSlug = slug;
+  let existingSha = await readSha(pathFor(config, targetSlug), config);
 
-  const existingSha = await readExistingSha(endpoint, config);
+  if (existingSha && !mode) {
+    return { success: false, conflict: true, slug: targetSlug };
+  }
 
-  const response = await fetch(endpoint, {
+  if (existingSha && mode === "copy") {
+    const free = await findFreeSlug(slug, config);
+    if (!free) {
+      return { success: false, error: `Ya existen demasiadas copias de "${slug}".` };
+    }
+    targetSlug = free;
+    existingSha = undefined;
+  }
+
+  const path = pathFor(config, targetSlug);
+  const response = await fetch(endpointFor(config, path), {
     method: "PUT",
     headers: githubHeaders(config),
     body: JSON.stringify({
-      message: `Publish ${slug} from BuilderOS\n\nPrompt: ${prompt.slice(0, 500)}`,
+      message: `Publish ${targetSlug} from BuilderOS\n\nPrompt: ${prompt.slice(0, 500)}`,
       content: toBase64(html),
       branch: config.githubBranch,
       ...(existingSha ? { sha: existingSha } : {}),
@@ -54,23 +72,88 @@ export async function publishApp({
 
   return {
     success: true,
-    url: `${config.publicBaseUrl.replace(/\/+$/, "")}/${path.replace(/\/index\.html$/, "")}/`,
+    slug: targetSlug,
+    url: publicUrlFor(config, targetSlug),
     commitUrl: body.commit?.html_url,
   };
 }
 
-async function readExistingSha(
-  endpoint: string,
+/** Every app already published, newest-first ordering left to the caller. */
+export async function listPublishedApps(config: BuilderConfig): Promise<PublishedApp[]> {
+  const slugs = await readPublishedSlugs(config);
+  return slugs.map((slug) => ({ slug, url: publicUrlFor(config, slug) }));
+}
+
+/** Reads a published app back so it can be reopened and edited. */
+export async function readPublishedApp(
   config: BuilderConfig,
-): Promise<string | undefined> {
-  const url = `${endpoint}?ref=${encodeURIComponent(config.githubBranch)}`;
-  const response = await fetch(url, { headers: githubHeaders(config) });
+  slug: string,
+): Promise<string | null> {
+  const response = await fetch(
+    `${endpointFor(config, pathFor(config, slug))}?ref=${encodeURIComponent(config.githubBranch)}`,
+    { headers: { ...githubHeaders(config), Accept: "application/vnd.github.raw+json" } },
+  );
+
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(await describeGithubError(response));
+  return response.text();
+}
+
+async function readPublishedSlugs(config: BuilderConfig): Promise<string[]> {
+  const directory = config.publishDirectory.replace(/^\/+|\/+$/g, "");
+  const response = await fetch(
+    `${endpointFor(config, directory)}?ref=${encodeURIComponent(config.githubBranch)}`,
+    { headers: githubHeaders(config) },
+  );
+
+  // An empty publish directory simply has no apps yet.
+  if (response.status === 404) return [];
+  if (!response.ok) throw new Error(await describeGithubError(response));
+
+  const entries = (await response.json()) as Array<{ name?: string; type?: string }>;
+  if (!Array.isArray(entries)) return [];
+
+  return entries
+    .filter((entry) => entry.type === "dir" && typeof entry.name === "string")
+    .map((entry) => entry.name as string)
+    .sort((left, right) => left.localeCompare(right));
+}
+
+async function findFreeSlug(slug: string, config: BuilderConfig): Promise<string | null> {
+  const taken = new Set(await readPublishedSlugs(config));
+  for (let suffix = 2; suffix <= MAX_COPY_SUFFIX; suffix += 1) {
+    const candidate = `${slug}-${suffix}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return null;
+}
+
+async function readSha(path: string, config: BuilderConfig): Promise<string | undefined> {
+  const response = await fetch(
+    `${endpointFor(config, path)}?ref=${encodeURIComponent(config.githubBranch)}`,
+    { headers: githubHeaders(config) },
+  );
   if (!response.ok) return undefined;
   const body = (await response.json()) as { sha?: string };
   return body.sha;
 }
 
-function githubHeaders(config: BuilderConfig): HeadersInit {
+function pathFor(config: BuilderConfig, slug: string): string {
+  return `${config.publishDirectory.replace(/^\/+|\/+$/g, "")}/${slug}/index.html`;
+}
+
+function endpointFor(config: BuilderConfig, path: string): string {
+  const api = config.githubApiUrl.replace(/\/+$/, "");
+  return `${api}/repos/${config.githubOwner}/${config.githubRepo}/contents/${path}`;
+}
+
+function publicUrlFor(config: BuilderConfig, slug: string): string {
+  const base = config.publicBaseUrl.replace(/\/+$/, "");
+  const directory = config.publishDirectory.replace(/^\/+|\/+$/g, "");
+  return `${base}/${directory}/${slug}/`;
+}
+
+function githubHeaders(config: BuilderConfig): Record<string, string> {
   return {
     Authorization: `Bearer ${config.githubToken}`,
     Accept: "application/vnd.github+json",

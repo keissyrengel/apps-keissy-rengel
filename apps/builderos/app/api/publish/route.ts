@@ -1,5 +1,5 @@
 import { slugify } from "@/lib/ai/app-generator";
-import type { PublishResult } from "@/lib/builder/types";
+import type { PublishMode, PublishResult } from "@/lib/builder/types";
 import { getConfig, isAuthorized } from "@/lib/env";
 import { publishApp } from "@/lib/github/publisher";
 
@@ -13,15 +13,18 @@ export async function POST(request: Request) {
   let slug = "";
   let html = "";
   let prompt = "";
+  let mode: PublishMode | undefined;
   try {
     const body = (await request.json()) as {
       slug?: string;
       html?: string;
       prompt?: string;
+      mode?: string;
     };
     slug = slugify(body.slug?.trim() ?? "");
     html = body.html ?? "";
     prompt = body.prompt?.trim() ?? "";
+    mode = body.mode === "update" || body.mode === "copy" ? body.mode : undefined;
   } catch {
     return json({ success: false, error: "Invalid publish request." }, 400);
   }
@@ -31,7 +34,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await publishApp({ slug, html, prompt, config });
+    const result = await publishApp({ slug, html, prompt, mode, config });
+    // A conflict is a question for the user, not a failure: 409 lets the UI
+    // ask whether to update the live app or publish a copy.
+    if (result.conflict) return json(result, 409);
     return json(result, result.success ? 200 : 502);
   } catch (error) {
     return json(

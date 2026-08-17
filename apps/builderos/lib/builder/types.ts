@@ -41,11 +41,27 @@ export interface GenerateResult {
   app?: GeneratedApp;
 }
 
+/** How to resolve a publish that would overwrite an existing app. */
+export type PublishMode = "update" | "copy";
+
 export interface PublishResult {
   success: boolean;
   error?: string;
   url?: string;
   commitUrl?: string;
+  /** The slug actually written — differs from the requested one in "copy" mode. */
+  slug?: string;
+  /**
+   * Set when the target already exists and no mode was given. The UI asks the
+   * user whether to update the live app or publish a copy.
+   */
+  conflict?: boolean;
+}
+
+/** An app already published to the repository. */
+export interface PublishedApp {
+  slug: string;
+  url: string;
 }
 
 export type BuildStreamEvent =
