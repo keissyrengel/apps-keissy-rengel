@@ -20,6 +20,8 @@ let server;
 let baseUrl;
 const existing = new Set();
 const puts = [];
+/** Number of upcoming PUTs that should answer 503, to emulate a GitHub blip. */
+let failNextPuts = 0;
 
 before(async () => {
   server = createServer(async (request, response) => {
@@ -33,6 +35,12 @@ before(async () => {
 
     if (request.method === "PUT") {
       puts.push({ path, body: JSON.parse(body) });
+      if (failNextPuts > 0) {
+        failNextPuts -= 1;
+        return json(503, {
+          message: "No server is currently available to service your request.",
+        });
+      }
       existing.add(path);
       return json(201, { commit: { html_url: "https://github.com/o/r/commit/abc" } });
     }
@@ -214,3 +222,36 @@ function readBody(request) {
     request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
   });
 }
+
+test("a transient GitHub 503 is retried instead of failing the publish", options, async () => {
+  existing.clear();
+  puts.length = 0;
+  // Fail the first PUT the way GitHub did in production, then behave normally.
+  failNextPuts = 1;
+
+  const { status, body } = await callRaw("POST", "/api/publish", {
+    slug: "nueva-app",
+    html: APP_HTML,
+  });
+
+  assert.equal(status, 200, JSON.stringify(body));
+  assert.equal(body.slug, "nueva-app");
+  assert.equal(puts.length, 2, "expected one failed attempt and one that landed");
+});
+
+test("a persistent outage explains itself instead of looking like a bug", options, async () => {
+  existing.clear();
+  puts.length = 0;
+  failNextPuts = 99;
+
+  const { status, body } = await callRaw("POST", "/api/publish", {
+    slug: "otra-app",
+    html: APP_HTML,
+  });
+
+  failNextPuts = 0;
+  assert.equal(status, 502);
+  assert.equal(body.success, false);
+  assert.match(body.error, /vuelve a pulsar Publish/i);
+  assert.equal(puts.length, 3, "expected the configured number of attempts");
+});

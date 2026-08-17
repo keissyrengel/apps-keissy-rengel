@@ -2,6 +2,44 @@ import type { BuilderConfig } from "../env";
 import type { PublishedApp, PublishMode, PublishResult } from "../builder/types";
 
 const USER_AGENT = "BuilderOS";
+/**
+ * GitHub's contents API occasionally answers 503 "No server is currently
+ * available to service your request" and asks the caller to resubmit. Left
+ * unhandled that surfaces as a failed publish for something that heals itself
+ * in a second, so transient failures are retried here instead of by the user.
+ */
+const RETRY_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 600;
+
+function isTransient(status: number): boolean {
+  return status === 429 || (status >= 500 && status <= 599);
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+/** Retries transient failures with a widening delay; other responses pass straight through. */
+async function githubFetch(
+  url: string,
+  init: RequestInit,
+  onRetry?: (attempt: number) => Promise<RequestInit> | RequestInit,
+): Promise<Response> {
+  let request = init;
+  let lastResponse: Response | undefined;
+
+  for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt += 1) {
+    if (attempt > 1) {
+      await wait(RETRY_BASE_DELAY_MS * 2 ** (attempt - 2));
+      if (onRetry) request = await onRetry(attempt);
+    }
+
+    lastResponse = await fetch(url, request);
+    if (!isTransient(lastResponse.status)) return lastResponse;
+  }
+
+  return lastResponse as Response;
+}
 /** Bound on the `slug-2`, `slug-3`… search so a pathological repo cannot spin. */
 const MAX_COPY_SUFFIX = 50;
 
@@ -53,16 +91,25 @@ export async function publishApp({
   }
 
   const path = pathFor(config, targetSlug);
-  const response = await fetch(endpointFor(config, path), {
-    method: "PUT",
-    headers: githubHeaders(config),
-    body: JSON.stringify({
+  const requestBody = (sha: string | undefined) =>
+    JSON.stringify({
       message: `Publish ${targetSlug} from BuilderOS\n\nPrompt: ${prompt.slice(0, 500)}`,
       content: toBase64(html),
       branch: config.githubBranch,
-      ...(existingSha ? { sha: existingSha } : {}),
+      ...(sha ? { sha } : {}),
+    });
+
+  const response = await githubFetch(
+    endpointFor(config, path),
+    { method: "PUT", headers: githubHeaders(config), body: requestBody(existingSha) },
+    // A retry re-reads the sha first: if the failed attempt actually landed,
+    // the stale sha would make GitHub reject the retry as a conflict.
+    async () => ({
+      method: "PUT",
+      headers: githubHeaders(config),
+      body: requestBody(await readSha(path, config)),
     }),
-  });
+  );
 
   if (!response.ok) {
     return { success: false, error: await describeGithubError(response) };
@@ -89,7 +136,7 @@ export async function readPublishedApp(
   config: BuilderConfig,
   slug: string,
 ): Promise<string | null> {
-  const response = await fetch(
+  const response = await githubFetch(
     `${endpointFor(config, pathFor(config, slug))}?ref=${encodeURIComponent(config.githubBranch)}`,
     { headers: { ...githubHeaders(config), Accept: "application/vnd.github.raw+json" } },
   );
@@ -101,7 +148,7 @@ export async function readPublishedApp(
 
 async function readPublishedSlugs(config: BuilderConfig): Promise<string[]> {
   const directory = config.publishDirectory.replace(/^\/+|\/+$/g, "");
-  const response = await fetch(
+  const response = await githubFetch(
     `${endpointFor(config, directory)}?ref=${encodeURIComponent(config.githubBranch)}`,
     { headers: githubHeaders(config) },
   );
@@ -129,7 +176,7 @@ async function findFreeSlug(slug: string, config: BuilderConfig): Promise<string
 }
 
 async function readSha(path: string, config: BuilderConfig): Promise<string | undefined> {
-  const response = await fetch(
+  const response = await githubFetch(
     `${endpointFor(config, path)}?ref=${encodeURIComponent(config.githubBranch)}`,
     { headers: githubHeaders(config) },
   );
@@ -177,6 +224,9 @@ async function describeGithubError(response: Response): Promise<string> {
   }
   if (response.status === 404) {
     return `GitHub returned 404. Check GITHUB_OWNER, GITHUB_REPO and GITHUB_BRANCH, and that the token can see the repository. ${detail}`;
+  }
+  if (isTransient(response.status)) {
+    return `GitHub no está respondiendo ahora mismo (${response.status}). Lo reintenté varias veces. Tu app está a salvo: espera un momento y vuelve a pulsar Publish. ${detail}`.trim();
   }
   return `GitHub returned HTTP ${response.status}. ${detail}`.trim();
 }
