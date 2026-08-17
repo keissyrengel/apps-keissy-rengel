@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useRef, useState, useSyncExternalStore } from "react";
+import { ChangeEvent, FormEvent, useRef, useState, useSyncExternalStore } from "react";
 import {
   AlertCircle,
   ArrowUp,
@@ -11,9 +11,11 @@ import {
   LoaderCircle,
   Lock,
   Monitor,
+  Paperclip,
   Plus,
   RotateCw,
   Sparkles,
+  X,
 } from "lucide-react";
 
 import {
@@ -26,8 +28,10 @@ import {
 } from "@/components/builder/brand-ui";
 import { BrandPanel } from "@/components/builder/brand-panel";
 import { HistoryPanel } from "@/components/builder/history-panel";
+import { readAttachment } from "@/lib/client/asset-intake";
 import {
   type Draft,
+  type DraftMessage,
   deleteDraft,
   getDraftsSnapshot,
   getServerDraftsSnapshot,
@@ -49,7 +53,7 @@ import type {
   PublishResult,
 } from "@/lib/builder/types";
 
-type Message = { id: number; role: "user" | "builder" | "error"; text: string };
+type Message = DraftMessage;
 
 const BUILD_STEPS = ["Planning", "Writing code", "Rendering preview", "Preview ready"] as const;
 const ACCESS_HEADER = "x-builderos-key";
@@ -89,6 +93,12 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
   const [publishing, setPublishing] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [conflictSlug, setConflictSlug] = useState<string | null>(null);
+  // Files attached to the next message only: a screenshot of a bug belongs to
+  // the question being asked, not to the project's permanent brand context.
+  const [pendingFiles, setPendingFiles] = useState<Attachment[]>([]);
+  const [attaching, setAttaching] = useState(false);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const promptFiles = useRef<HTMLInputElement>(null);
   const drafts = useSyncExternalStore(
     subscribeDrafts,
     getDraftsSnapshot,
@@ -122,7 +132,19 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
 
     const id = ++buildId.current;
     lastPrompt.current = value;
-    setMessages((current) => [...current, { id, role: "user", text: value }]);
+    const sentFiles = pendingFiles;
+    const thread: Message[] = [
+      ...messages,
+      {
+        id,
+        role: "user",
+        text: value,
+        ...(sentFiles.length > 0 ? { files: sentFiles.map((file) => file.name) } : {}),
+      },
+    ];
+    setMessages(thread);
+    setPendingFiles([]);
+    setAttachError(null);
     setPrompt("");
     setBuildError(null);
     setPublishedUrl(null);
@@ -137,7 +159,7 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
           prompt: value,
           previousHtml: app?.html,
           brand,
-          attachments,
+          attachments: [...attachments, ...sentFiles],
         }),
       });
 
@@ -172,20 +194,23 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
         throw new Error(result.error || "The app could not be generated.");
       }
 
+      const answered: Message[] = [
+        ...thread,
+        { id: id + 0.5, role: "builder", text: result.message ?? "Your app is ready." },
+      ];
+
       setApp(result.app);
       saveDraft({
         ...result.app,
         id: draftId.current,
         prompt: value,
         updatedAt: Date.now(),
+        messages: answered,
       });
       setPreviewVersion((version) => version + 1);
       setStatus("Preview ready");
       setStatusDetail(null);
-      setMessages((current) => [
-        ...current,
-        { id: id + 0.5, role: "builder", text: result.message ?? "Your app is ready." },
-      ]);
+      setMessages(answered);
       window.setTimeout(() => setStatus(null), 700);
     } catch (error) {
       if (id !== buildId.current) return;
@@ -193,8 +218,8 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
       setBuildError(message);
       setStatus(null);
       setStatusDetail(null);
-      setMessages((current) => [
-        ...current,
+      setMessages([
+        ...thread,
         { id: id + 0.5, role: "error", text: "Build failed. Check the error in Preview." },
       ]);
     }
@@ -257,12 +282,14 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
     return body.apps ?? [];
   }
 
-  function openApp(loaded: GeneratedApp, id: string, note: string) {
+  function openApp(loaded: GeneratedApp, id: string, note: string, thread: Message[] = []) {
     buildId.current += 1;
     draftId.current = id;
     setApp(loaded);
     setPreviewVersion((version) => version + 1);
-    setMessages([{ id: Date.now(), role: "builder", text: note }]);
+    setMessages([...thread, { id: Date.now(), role: "builder", text: note }]);
+    setPendingFiles([]);
+    setAttachError(null);
     setBuildError(null);
     setPublishedUrl(null);
     setConflictSlug(null);
@@ -276,6 +303,7 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
       { name: draft.name, slug: draft.slug, html: draft.html },
       draft.id,
       `Retomando "${draft.name}". Describe el cambio que quieras.`,
+      draft.messages ?? [],
     );
   }
 
@@ -286,11 +314,15 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
     const body = (await response.json()) as { app?: GeneratedApp; error?: string };
     if (!response.ok || !body.app) throw new Error(body.error ?? "No se pudo abrir la app.");
 
-    lastPrompt.current = "";
+    // A published app may already have a thread in this browser from when it
+    // was built; matching on the slug brings that conversation back with it.
+    const previous = drafts.find((draft) => draft.slug === body.app!.slug);
+    lastPrompt.current = previous?.prompt ?? "";
     openApp(
       body.app,
-      newDraftId(),
+      previous?.id ?? newDraftId(),
       `Abierta "${body.app.name}" desde tus apps publicadas. Describe el cambio que quieras.`,
+      previous?.messages ?? [],
     );
   }
 
@@ -307,6 +339,31 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
     setStatus(null);
     setStatusDetail(null);
     setConflictSlug(null);
+    setPendingFiles([]);
+    setAttachError(null);
+  }
+
+  async function attachToPrompt(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (files.length === 0) return;
+
+    setAttaching(true);
+    setAttachError(null);
+    const collected: Attachment[] = [];
+    const failures: string[] = [];
+
+    for (const file of files) {
+      try {
+        collected.push(...(await readAttachment(file)));
+      } catch (cause) {
+        failures.push(cause instanceof Error ? cause.message : file.name);
+      }
+    }
+
+    setPendingFiles((current) => [...current, ...collected].slice(0, 4));
+    setAttachError(failures.length > 0 ? failures.join(" ") : null);
+    setAttaching(false);
   }
 
   const activeStep = status ? BUILD_STEPS.indexOf(status as (typeof BUILD_STEPS)[number]) : -1;
@@ -379,7 +436,12 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
             ) : (
               <div className="space-y-5" aria-live="polite">
                 {messages.map((message) => (
-                  <ChatMessage key={message.id} role={message.role} text={message.text} />
+                  <ChatMessage
+                    key={message.id}
+                    role={message.role}
+                    text={message.text}
+                    files={message.files}
+                  />
                 ))}
                 {status && (
                   <div className="flex gap-3">
@@ -526,11 +588,57 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
                 aria-label="Describe what you want to build"
                 className="min-h-16"
               />
-              <div className="mt-1 flex items-center justify-between">
-                <span className="hidden text-[10px] text-muted sm:inline">
-                  Enter to build · Shift + Enter for a new line
+              {pendingFiles.length > 0 && (
+                <ul className="mt-2 flex flex-wrap gap-1.5">
+                  {pendingFiles.map((file, index) => (
+                    <li
+                      key={`${file.name}-${index}`}
+                      className="flex items-center gap-1.5 rounded-full border border-brand-border bg-surface-secondary/60 px-2 py-0.5 font-mono text-[9px] text-copy"
+                    >
+                      {file.kind === "image" ? "🖼" : "📄"} {file.name}
+                      <button
+                        type="button"
+                        aria-label={`Quitar ${file.name}`}
+                        onClick={() =>
+                          setPendingFiles((current) => current.filter((_, item) => item !== index))
+                        }
+                        className="text-muted transition hover:text-neon"
+                      >
+                        <X className="size-2.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {attachError && <p className="mt-2 text-[10px] leading-4 text-neon">{attachError}</p>}
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => promptFiles.current?.click()}
+                    disabled={isBuilding || attaching || pendingFiles.length >= 4}
+                    aria-label="Adjuntar archivos a este mensaje"
+                    title="Adjuntar una captura, un PDF o datos a este mensaje"
+                    className="grid size-7 place-items-center rounded-md border border-brand-border bg-surface text-muted transition hover:border-electric/50 hover:text-electric disabled:opacity-30"
+                  >
+                    {attaching ? (
+                      <LoaderCircle className="size-3.5 animate-spin" />
+                    ) : (
+                      <Paperclip className="size-3.5" />
+                    )}
+                  </button>
+                  <input
+                    ref={promptFiles}
+                    type="file"
+                    multiple
+                    accept="image/*,application/pdf,.txt,.md,.csv,.tsv,.json"
+                    onChange={attachToPrompt}
+                    className="hidden"
+                  />
+                  <span className="hidden text-[10px] text-muted sm:inline">
+                    Enter to build · Shift + Enter for a new line
+                  </span>
                 </span>
-                <span className="sm:hidden" />
                 <BuilderButton type="submit" disabled={!prompt.trim() || isBuilding || needsAccessCode}>
                   {isBuilding ? status : app ? "Update" : "Build"}
                   {isBuilding ? (

@@ -25,8 +25,17 @@ export function BuilderButton({ className, children, ...props }: ButtonHTMLAttri
   return <button className={cn("inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-acid px-4 text-sm font-bold text-night shadow-[0_0_0_1px_rgb(224_255_5/0.08),0_6px_22px_rgb(224_255_5/0.12)] transition hover:bg-acid/90 hover:shadow-[0_0_24px_rgb(224_255_5/0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acid/70 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:pointer-events-none disabled:opacity-40", className)} {...props}>{children}</button>;
 }
 
-export function ChatMessage({ role, text }: { role: "user" | "builder" | "error"; text: string }) {
-  if (role === "user") return <div className="ml-auto max-w-[90%] rounded-2xl rounded-br-md border border-brand-border bg-surface-secondary px-4 py-3 text-sm leading-6 text-ink shadow-[0_8px_24px_rgb(9_0_20/0.18)]">{text}</div>;
+export function ChatMessage({ role, text, files }: { role: "user" | "builder" | "error"; text: string; files?: string[] }) {
+  const attachments = files && files.length > 0 ? (
+    <ul className="mt-2 flex flex-wrap gap-1.5">
+      {files.map((name) => (
+        <li key={name} className="rounded-full border border-brand-border-subtle bg-night/40 px-2 py-0.5 font-mono text-[9px] text-muted">
+          {name}
+        </li>
+      ))}
+    </ul>
+  ) : null;
+  if (role === "user") return <div className="ml-auto max-w-[90%] rounded-2xl rounded-br-md border border-brand-border bg-surface-secondary px-4 py-3 text-sm leading-6 text-ink shadow-[0_8px_24px_rgb(9_0_20/0.18)]">{text}{attachments}</div>;
   const isError = role === "error";
   return (
     <div className={cn("flex gap-3 text-sm leading-6", isError ? "text-neon" : "text-copy")}>

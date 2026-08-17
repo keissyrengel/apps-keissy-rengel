@@ -14,10 +14,24 @@ import type { GeneratedApp } from "@/lib/builder/types";
 const STORAGE_KEY = "builderos.drafts";
 const MAX_DRAFTS = 8;
 
+/** One line of the conversation, as it is replayed when a draft is reopened. */
+export interface DraftMessage {
+  id: number;
+  role: "user" | "builder" | "error";
+  text: string;
+  /** Names of files attached to that message, shown so the thread reads honestly. */
+  files?: string[];
+}
+
 export interface Draft extends GeneratedApp {
   id: string;
   prompt: string;
   updatedAt: number;
+  /**
+   * The full thread, not just the last prompt. Reopening a project without it
+   * means re-reading the generated app to remember what you already asked for.
+   */
+  messages?: DraftMessage[];
 }
 
 /**
