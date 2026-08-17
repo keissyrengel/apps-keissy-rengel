@@ -7,6 +7,7 @@ import {
   sanitizeAttachments,
   sanitizeBrand,
 } from "./brand-brief.ts";
+import { applyCredit } from "./credit.ts";
 
 const SYSTEM_PROMPT = `You are BuilderOS, an expert front-end engineer who ships complete, production-quality web apps in a single file.
 
@@ -27,7 +28,8 @@ Design rules:
 - Fully responsive from 360px to desktop.
 - Accessible: semantic HTML, labelled form controls, visible focus states, sufficient contrast.
 - Include a <title> that is the plain human name of the app — this becomes its published name, so keep it short and free of taglines.
-- Write all user-facing copy in the same language as the user's request.`;
+- Write all user-facing copy in the same language as the user's request.
+- Do not write your own "made with" or agency credit anywhere: BuilderOS appends the official one to the footer automatically, and a second one would be duplicated.`;
 
 const EDIT_PROMPT = `The user wants to change the app below. Apply the requested change and return the COMPLETE updated HTML document, following the same output contract. Preserve everything the user did not ask you to change.`;
 
@@ -108,7 +110,7 @@ export async function generateApp({
   }
 
   const generated = extractHtmlDocument(await readStream(response.body, onProgress));
-  const html = applyLogo(generated, brand.logoDataUrl);
+  const html = applyCredit(applyLogo(generated, brand.logoDataUrl), config);
   const name = readTitle(html) ?? "Untitled app";
 
   return { name, slug: slugify(name), html };

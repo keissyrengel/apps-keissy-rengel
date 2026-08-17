@@ -18,6 +18,9 @@ export interface BuilderConfig {
   publishDirectory: string;
   publicBaseUrl: string;
   accessCode: string;
+  creditText: string;
+  creditLinkText: string;
+  creditUrl: string;
 }
 
 function read(name: string, fallback = ""): string {
@@ -38,6 +41,9 @@ export function getConfig(): BuilderConfig {
     publishDirectory: read("PUBLISH_DIRECTORY", "apps"),
     publicBaseUrl: read("PUBLIC_BASE_URL", "https://apps.keissyrengel.com"),
     accessCode: read("BUILDER_ACCESS_CODE"),
+    creditText: read("CREDIT_TEXT", "Esta app fue hecha con \u{1F49C} por"),
+    creditLinkText: read("CREDIT_LINK_TEXT", "Konvertis Agency"),
+    creditUrl: read("CREDIT_URL", "https://www.konvertisagency.com"),
   };
 }
 

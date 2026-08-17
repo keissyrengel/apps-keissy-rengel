@@ -23,6 +23,9 @@
     "GITHUB_REPO": "apps-keissy-rengel",
     "GITHUB_BRANCH": "main",
     "PUBLISH_DIRECTORY": "apps",
-    "PUBLIC_BASE_URL": "https://apps.keissyrengel.com"
+    "PUBLIC_BASE_URL": "https://apps.keissyrengel.com",
+    "CREDIT_TEXT": "Esta app fue hecha con \ud83d\udc9c por",
+    "CREDIT_LINK_TEXT": "Konvertis Agency",
+    "CREDIT_URL": "https://www.konvertisagency.com"
   }
 }

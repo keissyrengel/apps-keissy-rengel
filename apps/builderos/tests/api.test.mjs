@@ -78,7 +78,15 @@ test("POST /api/build streams status events and returns the generated app", opti
   assert.equal(result.result.success, true, result.result.error);
   assert.equal(result.result.app.name, "Lista de Tareas");
   assert.equal(result.result.app.slug, "lista-de-tareas");
-  assert.equal(result.result.app.html, APP_HTML);
+
+  // The document comes back as generated, plus the agency credit the Worker
+  // appends to every app.
+  const { html } = result.result.app;
+  assert.match(html, /^<!DOCTYPE html>/);
+  assert.match(html, /<h1>Lista de Tareas<\/h1>/);
+  assert.match(html, /data-builderos-credit/);
+  assert.match(html, /Konvertis Agency/);
+  assert.ok(html.trimEnd().endsWith("</html>"));
 });
 
 test("POST /api/build rejects a wrong access code", options, async () => {
