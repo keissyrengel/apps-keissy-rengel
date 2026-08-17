@@ -27,5 +27,7 @@ test(
     const html = await response.text();
     assert.match(html, /<title>BuilderOS/i);
     assert.match(html, /Build what comes next/);
+    // The brand panel ships collapsed, so only its header is server-rendered.
+    assert.match(html, /Marca y referencias/);
   },
 );

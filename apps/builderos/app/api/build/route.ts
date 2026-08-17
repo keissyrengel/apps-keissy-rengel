@@ -1,5 +1,10 @@
 import { generateApp } from "@/lib/ai/app-generator";
-import type { BuildStreamEvent, GenerateResult } from "@/lib/builder/types";
+import type {
+  Attachment,
+  Brand,
+  BuildStreamEvent,
+  GenerateResult,
+} from "@/lib/builder/types";
 import { getConfig, isAuthorized } from "@/lib/env";
 
 const encoder = new TextEncoder();
@@ -19,10 +24,21 @@ export async function POST(request: Request) {
 
   let prompt = "";
   let previousHtml: string | undefined;
+  let brand: Brand | undefined;
+  let attachments: Attachment[] | undefined;
   try {
-    const body = (await request.json()) as { prompt?: string; previousHtml?: string };
+    const body = (await request.json()) as {
+      prompt?: string;
+      previousHtml?: string;
+      brand?: Brand;
+      attachments?: Attachment[];
+    };
     prompt = body.prompt?.trim() ?? "";
     previousHtml = body.previousHtml?.trim() || undefined;
+    // Both are validated and clamped inside generateApp, so malformed or
+    // oversized assets degrade to "no brand" instead of failing the build.
+    brand = body.brand;
+    attachments = body.attachments;
   } catch {
     return immediate({ success: false, error: "Invalid build request." }, 400);
   }
@@ -51,6 +67,8 @@ export async function POST(request: Request) {
         const app = await generateApp({
           prompt,
           previousHtml,
+          brand,
+          attachments,
           config,
           onProgress: (count) => {
             characters = count;

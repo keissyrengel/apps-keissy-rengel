@@ -24,9 +24,12 @@ import {
   StatusIndicator,
   WorkspacePanel,
 } from "@/components/builder/brand-ui";
+import { BrandPanel } from "@/components/builder/brand-panel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type {
+  Attachment,
+  Brand,
   BuilderStatus,
   BuildStreamEvent,
   GeneratedApp,
@@ -63,6 +66,8 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
   );
   const [typedAccessCode, setTypedAccessCode] = useState<string | null>(null);
   const accessCode = typedAccessCode ?? storedAccessCode;
+  const [brand, setBrand] = useState<Brand>({});
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [status, setStatus] = useState<BuilderStatus | null>(null);
   const [statusDetail, setStatusDetail] = useState<string | null>(null);
@@ -109,7 +114,12 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
       const response = await fetch("/api/build", {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({ prompt: value, previousHtml: app?.html }),
+        body: JSON.stringify({
+          prompt: value,
+          previousHtml: app?.html,
+          brand,
+          attachments,
+        }),
       });
 
       if (!response.body) throw new Error("BuilderOS did not return an event stream.");
@@ -203,6 +213,8 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
     buildId.current += 1;
     setPrompt("");
     setMessages([]);
+    setBrand({});
+    setAttachments([]);
     setApp(null);
     setPublishedUrl(null);
     setBuildError(null);
@@ -348,6 +360,13 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
           )}
 
           <div className="shrink-0 p-3 sm:p-4">
+            <BrandPanel
+              brand={brand}
+              onBrandChange={setBrand}
+              attachments={attachments}
+              onAttachmentsChange={setAttachments}
+              disabled={isBuilding}
+            />
             {requiresAccessCode && (
               <label className="mb-2 flex items-center gap-2 rounded-lg border border-brand-border bg-night/50 px-3 py-2">
                 <Lock className="size-3.5 shrink-0 text-muted" />

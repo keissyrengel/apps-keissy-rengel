@@ -1,5 +1,12 @@
 import type { BuilderConfig } from "../env";
-import type { GeneratedApp } from "../builder/types";
+import type { Attachment, Brand, GeneratedApp } from "../builder/types";
+import {
+  LOGO_PLACEHOLDER,
+  describeAttachments,
+  describeBrand,
+  sanitizeAttachments,
+  sanitizeBrand,
+} from "./brand-brief.ts";
 
 const SYSTEM_PROMPT = `You are BuilderOS, an expert front-end engineer who ships complete, production-quality web apps in a single file.
 
@@ -27,15 +34,25 @@ const EDIT_PROMPT = `The user wants to change the app below. Apply the requested
 export interface GenerateOptions {
   prompt: string;
   previousHtml?: string;
+  brand?: Brand;
+  attachments?: Attachment[];
   config: BuilderConfig;
   signal?: AbortSignal;
   /** Called as the model streams, with the number of characters produced so far. */
   onProgress?: (characters: number) => void;
 }
 
+type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+type Message = { role: "system" | "user"; content: string | ContentPart[] };
+
 export async function generateApp({
   prompt,
   previousHtml,
+  brand: rawBrand,
+  attachments: rawAttachments,
   config,
   signal,
   onProgress,
@@ -46,18 +63,29 @@ export async function generateApp({
     );
   }
 
-  const messages: Array<{ role: "system" | "user"; content: string }> = [
-    { role: "system", content: SYSTEM_PROMPT },
+  const brand = sanitizeBrand(rawBrand);
+  const attachments = sanitizeAttachments(rawAttachments);
+
+  const messages: Message[] = [
+    { role: "system", content: `${SYSTEM_PROMPT}${describeBrand(brand)}` },
   ];
 
-  if (previousHtml) {
-    messages.push({
-      role: "user",
-      content: `${EDIT_PROMPT}\n\nRequested change:\n${prompt}\n\nCurrent app:\n${previousHtml}`,
-    });
-  } else {
-    messages.push({ role: "user", content: prompt });
+  const instruction = previousHtml
+    ? `${EDIT_PROMPT}\n\nRequested change:\n${prompt}\n\nCurrent app:\n${previousHtml}`
+    : prompt;
+
+  const text = `${instruction}${describeAttachments(attachments)}`;
+  const parts: ContentPart[] = [{ type: "text", text }];
+  for (const attachment of attachments) {
+    if (attachment.kind === "image") {
+      parts.push({ type: "image_url", image_url: { url: attachment.dataUrl } });
+    }
   }
+
+  // A plain string keeps the request identical to the pre-attachment shape for
+  // the common case, which matters for providers that only accept parts when
+  // an image is actually present.
+  messages.push({ role: "user", content: parts.length === 1 ? text : parts });
 
   const endpoint = `${config.openaiBaseUrl.replace(/\/+$/, "")}/chat/completions`;
 
@@ -79,10 +107,27 @@ export async function generateApp({
     throw new Error(await describeOpenAiError(response));
   }
 
-  const html = extractHtmlDocument(await readStream(response.body, onProgress));
+  const generated = extractHtmlDocument(await readStream(response.body, onProgress));
+  const html = applyLogo(generated, brand.logoDataUrl);
   const name = readTitle(html) ?? "Untitled app";
 
   return { name, slug: slugify(name), html };
+}
+
+/**
+ * Splices the real logo into the document. When there is no logo the
+ * placeholder is stripped along with its `<img>` tag, so a model that used it
+ * anyway cannot leave a broken image in the published app.
+ */
+export function applyLogo(html: string, logoDataUrl: string | undefined): string {
+  if (!html.includes(LOGO_PLACEHOLDER)) return html;
+  if (logoDataUrl) return html.split(LOGO_PLACEHOLDER).join(logoDataUrl);
+
+  const placeholder = LOGO_PLACEHOLDER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return html
+    .replace(new RegExp(`<img[^>]*src=["']${placeholder}["'][^>]*>`, "gi"), "")
+    .split(LOGO_PLACEHOLDER)
+    .join("");
 }
 
 async function describeOpenAiError(response: Response): Promise<string> {
