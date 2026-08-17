@@ -23,6 +23,8 @@ interface HistoryPanelProps {
   onOpenPublished: (slug: string) => Promise<void>;
   loadPublished: () => Promise<PublishedApp[]>;
   busy: boolean;
+  /** True while the access code is required but not yet entered. */
+  locked: boolean;
 }
 
 export function HistoryPanel({
@@ -32,6 +34,7 @@ export function HistoryPanel({
   onOpenPublished,
   loadPublished,
   busy,
+  locked,
 }: HistoryPanelProps) {
   const [open, setOpen] = useState(false);
   const [published, setPublished] = useState<PublishedApp[] | null>(null);
@@ -52,11 +55,12 @@ export function HistoryPanel({
   }
 
   // The published list costs a GitHub round trip, so it is fetched the first
-  // time the panel is opened rather than on every page load.
+  // time the panel is opened rather than on every page load — and never while
+  // the workspace is still locked, which would only produce a 401.
   function toggle() {
     const next = !open;
     setOpen(next);
-    if (next && published === null && !loading) void refresh();
+    if (next && !locked && published === null && !loading) void refresh();
   }
 
   async function openPublished(slug: string) {
@@ -103,7 +107,7 @@ export function HistoryPanel({
               <button
                 type="button"
                 onClick={() => void refresh()}
-                disabled={loading}
+                disabled={loading || locked}
                 aria-label="Actualizar lista"
                 className="text-muted transition hover:text-electric disabled:opacity-40"
               >
@@ -111,7 +115,11 @@ export function HistoryPanel({
               </button>
             </div>
 
-            {loading && published === null ? (
+            {locked ? (
+              <p className="text-[10px] leading-4 text-muted">
+                Escribe tu código de acceso abajo para ver las apps que ya publicaste.
+              </p>
+            ) : loading && published === null ? (
               <p className="text-[10px] text-muted">Leyendo tu repositorio…</p>
             ) : published && published.length > 0 ? (
               <ul className="space-y-1">
@@ -152,7 +160,7 @@ export function HistoryPanel({
               </ul>
             ) : (
               <p className="text-[10px] text-muted">
-                {published ? "Aún no has publicado ninguna app." : "—"}
+                {published ? "Aún no has publicado ninguna app." : "Abre el panel para cargarlas."}
               </p>
             )}
           </section>

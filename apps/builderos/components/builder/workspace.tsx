@@ -485,6 +485,7 @@ export function Workspace({ requiresAccessCode, publicBaseUrl }: WorkspaceProps)
               onOpenPublished={openPublished}
               loadPublished={loadPublished}
               busy={isBuilding || publishing}
+              locked={needsAccessCode}
             />
             <BrandPanel
               brand={brand}
