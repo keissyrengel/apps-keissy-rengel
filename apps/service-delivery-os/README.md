@@ -1,6 +1,12 @@
 # Service Delivery OS
 
-Aplicación estática servida por Cloudflare Workers con persistencia en D1.
+Aplicación estática publicada en GitHub Pages con una API PHP y persistencia MySQL en Hostinger. La implementación de Cloudflare Workers + D1 permanece como respaldo temporal.
+
+## Hostinger
+
+La API fuente está en `hostinger-api/`. En producción se despliega en `public_html/sdo-api/` junto con un `config.php` no versionado y protegido por `.htaccess`.
+
+La interfaz usa sesiones `HttpOnly`, restringe CORS a los orígenes autorizados y sincroniza el documento de trabajo con revisiones optimistas. La primera sesión permite importar explícitamente las claves `sdo_*` existentes en `localStorage`.
 
 ## Desarrollo
 
@@ -9,7 +15,7 @@ Aplicación estática servida por Cloudflare Workers con persistencia en D1.
 3. Ejecuta `npm run db:migrate:local`.
 4. Ejecuta `npm run dev`.
 
-## Despliegue
+## Despliegue de respaldo en Cloudflare
 
 ```sh
 npm run types
