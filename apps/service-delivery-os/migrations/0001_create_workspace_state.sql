@@ -1,0 +1,7 @@
+CREATE TABLE workspace_state (
+  workspace_id TEXT PRIMARY KEY,
+  data TEXT NOT NULL,
+  revision INTEGER NOT NULL DEFAULT 1,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
