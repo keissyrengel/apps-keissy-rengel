@@ -67,26 +67,10 @@ if ($action === 'health') {
 
 requireAllowedOrigin($origin, $allowedOrigins);
 
-if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $body = json_decode(file_get_contents('php://input'), true);
-    $password = is_array($body) ? (string) ($body['password'] ?? '') : '';
-    if (!password_verify($password, (string) $config['app_password_hash'])) {
-        usleep(250000);
-        respond(['error' => 'Invalid credentials'], 401);
-    }
-    session_regenerate_id(true);
-    $_SESSION['authenticated'] = true;
-    respond(['authenticated' => true]);
-}
-
 if ($action === 'logout' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION = [];
     session_destroy();
     respond(['authenticated' => false]);
-}
-
-if (empty($_SESSION['authenticated'])) {
-    respond(['error' => 'Unauthorized'], 401);
 }
 
 try {
@@ -106,9 +90,67 @@ try {
         revision INT UNSIGNED NOT NULL DEFAULT 1,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+    $pdo->exec('CREATE TABLE IF NOT EXISTS app_settings (
+        setting_key VARCHAR(64) PRIMARY KEY,
+        setting_value TEXT NOT NULL,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
 } catch (Throwable $error) {
     error_log('Service Delivery OS database error: ' . $error->getMessage());
     respond(['error' => 'Database unavailable'], 503);
+}
+
+$settings = $pdo->query("SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('password_hash', 'auth_version')")
+    ->fetchAll(PDO::FETCH_KEY_PAIR);
+$passwordHash = $settings['password_hash'] ?? (string) $config['app_password_hash'];
+$authVersion = isset($settings['auth_version']) ? (int) $settings['auth_version'] : 1;
+
+if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $body = json_decode(file_get_contents('php://input'), true);
+    $password = is_array($body) ? (string) ($body['password'] ?? '') : '';
+    if (!password_verify($password, $passwordHash)) {
+        usleep(250000);
+        respond(['error' => 'Invalid credentials'], 401);
+    }
+    session_regenerate_id(true);
+    $_SESSION['authenticated'] = true;
+    $_SESSION['auth_version'] = $authVersion;
+    respond(['authenticated' => true]);
+}
+
+if (empty($_SESSION['authenticated']) || (int) ($_SESSION['auth_version'] ?? 0) !== $authVersion) {
+    $_SESSION = [];
+    respond(['error' => 'Unauthorized'], 401);
+}
+
+if ($action === 'change-password' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $body = json_decode(file_get_contents('php://input'), true);
+    $currentPassword = is_array($body) ? (string) ($body['currentPassword'] ?? '') : '';
+    $newPassword = is_array($body) ? (string) ($body['newPassword'] ?? '') : '';
+    if (!password_verify($currentPassword, $passwordHash)) {
+        usleep(250000);
+        respond(['error' => 'Current password is incorrect'], 400);
+    }
+    if (strlen($newPassword) < 12 || !preg_match('/[a-z]/', $newPassword) || !preg_match('/[A-Z]/', $newPassword) || !preg_match('/\d/', $newPassword)) {
+        respond(['error' => 'Password does not meet requirements'], 422);
+    }
+    if (password_verify($newPassword, $passwordHash)) {
+        respond(['error' => 'New password must be different'], 422);
+    }
+
+    $nextAuthVersion = $authVersion + 1;
+    $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
+    $pdo->beginTransaction();
+    $statement = $pdo->prepare('INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)');
+    $statement->execute(['password_hash', $newHash]);
+    $statement->execute(['auth_version', (string) $nextAuthVersion]);
+    $pdo->commit();
+
+    session_regenerate_id(true);
+    $_SESSION['authenticated'] = true;
+    $_SESSION['auth_version'] = $nextAuthVersion;
+    respond(['changed' => true]);
 }
 
 if ($action !== 'state') {
